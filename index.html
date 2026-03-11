@@ -2001,7 +2001,7 @@ function updStats() {
 }
 function addHist(col,causa,marca,sku,res,nota) {
   const t=new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
-  G.nArt = Math.max(G.nArt, G.hist.length + 1); // nArt = artículo actual (1-based)
+  // nArt ya fue incrementado en confirmarClas antes de llamar addHist
   G.hist.unshift({col,causa,marca,sku,res,t,nota:nota||''});
   renderHist();
   guardarEstado();
@@ -2238,7 +2238,9 @@ function cargarEstado() {
     if (data.fecha === hoy) {
       G.st = data.st || {p:0,c:0,l:0,n:0};
       G.hist = data.hist || [];
-      G.nArt = G.hist.length; // restaurar contador
+      // nArt = el mayor número ya asignado, para que el siguiente sea nArt+1
+      const maxNArt = G.hist.reduce(function(mx, h){ return Math.max(mx, h.nArt||0); }, 0);
+      G.nArt = maxNArt || G.hist.length;
     } else {
       // Nuevo día: limpiar automáticamente
       localStorage.removeItem(LS_KEY);
