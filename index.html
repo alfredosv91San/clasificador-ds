@@ -193,6 +193,7 @@ input.w{border-color:var(--o);background:var(--odim)}
 .hchev{color:var(--sub2);font-size:.65rem;flex-shrink:0;transition:transform .2s;margin-left:2px}
 .hcard.open .hchev{transform:rotate(180deg)}
 .hnotabadge{font-size:.52rem;background:var(--s3);color:var(--blue);border-radius:3px;padding:1px 4px;flex-shrink:0}
+.hfotobadge{font-size:.52rem;background:var(--gdim);color:var(--g);border-radius:3px;padding:1px 4px;flex-shrink:0}
 /* panel desplegable */
 .hcard-body{display:none;border-top:1px solid var(--border);padding:9px 11px}
 .hcard.open .hcard-body{display:block}
@@ -201,6 +202,22 @@ input.w{border-color:var(--o);background:var(--odim)}
 .hinfo-val{color:var(--text);font-weight:600;flex:1;line-height:1.3}
 .hnota-box{margin-top:6px;background:var(--s2);border:1px solid var(--border2);border-radius:6px;padding:8px 10px;font-size:.73rem;color:#ccc;line-height:1.45;min-height:34px}
 .hnota-empty{color:var(--sub2);font-style:italic}
+/* reclasificar */
+.hreclas-wrap{margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+.hreclas-lbl{font-size:.6rem;text-transform:uppercase;letter-spacing:.5px;color:var(--sub);margin-bottom:5px}
+.hreclas-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:5px}
+.hreclas-btn{padding:7px 4px;border:1.5px solid var(--border2);border-radius:6px;background:var(--s2);color:var(--sub);font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:.8rem;letter-spacing:.5px;cursor:pointer;text-align:center}
+.hreclas-btn.active-verde{background:var(--gdim);border-color:var(--g);color:var(--g)}
+.hreclas-btn.active-amarillo{background:var(--ydim);border-color:var(--y);color:var(--y)}
+.hreclas-btn.active-rojo{background:var(--rdim);border-color:var(--r);color:var(--r)}
+/* fotos en historial */
+.hfotos-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
+.hfoto-item{position:relative;border-radius:6px;overflow:hidden;aspect-ratio:4/3;background:var(--s2);border:1px solid var(--border2)}
+.hfoto-item img{width:100%;height:100%;object-fit:cover;display:block}
+.hfoto-del{position:absolute;top:3px;right:3px;background:#0008;color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:.8rem;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.hfoto-edit{position:absolute;bottom:3px;right:3px;background:#0009;color:#fff;border:none;border-radius:4px;font-size:.6rem;font-family:'Barlow Condensed',sans-serif;font-weight:700;padding:2px 5px;cursor:pointer;letter-spacing:.5px}
+.hfoto-lbl{position:absolute;bottom:0;left:0;right:0;background:#000a;color:#ddd;font-size:.52rem;text-align:center;padding:2px 3px;line-height:1.2}
+/* botones del panel */
 .hcard-btns{display:flex;gap:7px;margin-top:9px}
 .hcard-btn{flex:1;padding:8px;border:none;border-radius:6px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:.88rem;letter-spacing:1px;cursor:pointer}
 .hcard-btn.edit{background:var(--s3);color:var(--blue);border:1px solid var(--border2)}
@@ -1945,6 +1962,11 @@ async function siguiente() {
   // Guardar nota en el último item del historial
   const nota = (document.getElementById('rc-nota')?.value||'').trim();
   if (nota && G.hist.length) G.hist[0].nota = nota;
+  // Guardar fotos en el historial (copias base64)
+  if (G.hist.length) {
+    G.hist[0].fotos = G_fotos.slice(); // copia del array actual
+    G.hist[0].nArt  = G.nArt;          // número para reconstruir nombre de archivo
+  }
   guardarEstado();
   const hayFotos = G_fotos.some(Boolean);
   if (hayFotos) {
@@ -1991,11 +2013,53 @@ function renderHist() {
   hl.innerHTML=G.hist.slice(0,30).map(function(h,i){
     const resIco = h.col==='verde'?'✅':h.col==='amarillo'?'🟡':h.col==='rojo'?'🔴':'⚫';
     const hasNota = !!(h.nota && h.nota.trim());
+    const hasFotos = !!(h.fotos && h.fotos.some(Boolean));
     const causaDesc = (CAUSAS[h.causa] && CAUSAS[h.causa].d) ? ' · '+CAUSAS[h.causa].d : '';
     const skuHead  = h.sku ? '<span class="hsku">#'+h.sku+'</span>' : '';
     const badge    = hasNota ? '<span class="hnotabadge">📝</span>' : '';
+    const fbadge   = hasFotos ? '<span class="hfotobadge">📸</span>' : '';
     const skuRow   = h.sku ? '<div class="hinfo-row"><span class="hinfo-lbl">SKU</span><span class="hinfo-val" style="font-family:monospace;color:var(--y)">'+h.sku+'</span></div>' : '';
     const notaHtml = hasNota ? h.nota : '<span class="hnota-empty">Sin nota registrada</span>';
+
+    // Botones reclasificar
+    const opciones = [
+      {col:'verde',   etiq:'PROVEEDOR', res:'✅ PROVEEDOR'},
+      {col:'amarillo',etiq:'CARPA A',   res:'🟡 CARPA A'},
+      {col:'amarillo',etiq:'CARPA B',   res:'🟡 CARPA B'},
+      {col:'rojo',    etiq:'LOTE C',    res:'🔴 LOTE C'},
+      {col:'rojo',    etiq:'LOTE D',    res:'🔴 LOTE D'},
+      {col:'bloq',    etiq:'NO PROCESA',res:'⚫ NO PROCESA'},
+    ];
+    const reclasGrid = opciones.map(function(o){
+      const isActive = (h.res === o.res || h.etiq === o.etiq);
+      const cls = isActive ? 'hreclas-btn active-'+o.col : 'hreclas-btn';
+      return '<button class="'+cls+'" onclick="hReclasificar('+i+',\''+o.col+'\',\''+o.etiq+'\',\''+o.res+'\')">'+o.etiq+'</button>';
+    }).join('');
+
+    // Grid de fotos
+    let fotosHtml = '';
+    if (h.fotos) {
+      const nArtStr = String(h.nArt||'?').padStart(3,'0');
+      fotosHtml = '<div style="font-size:.6rem;text-transform:uppercase;letter-spacing:.5px;color:var(--sub);margin-top:10px;margin-bottom:4px">📸 Fotos (toca para retomar)</div>'
+        +'<div class="hfotos-grid">'
+        +h.fotos.map(function(f,fi){
+          if (!f) {
+            return '<div class="hfoto-item" onclick="hEditarFoto('+i+','+fi+')" style="display:flex;align-items:center;justify-content:center;cursor:pointer">'
+              +'<span style="font-size:1.4rem">📷</span>'
+              +'<div class="hfoto-lbl">'+FOTO_SLOTS[fi].lbl+'</div>'
+              +'</div>';
+          }
+          return '<div class="hfoto-item">'
+            +'<img src="'+f+'" onclick="hEditarFoto('+i+','+fi+')">'
+            +'<button class="hfoto-del" onclick="hBorrarFoto('+i+','+fi+',event)">✕</button>'
+            +'<button class="hfoto-edit" onclick="hEditarFoto('+i+','+fi+')">📷 RETOMAR</button>'
+            +'<div class="hfoto-lbl">'+nArtStr+'_0'+(fi+1)+'</div>'
+            +'</div>';
+        }).join('')
+        +'</div>'
+        +'<button style="width:100%;margin-top:7px;padding:8px;background:var(--blue);color:#fff;border:none;border-radius:6px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;font-size:.88rem;letter-spacing:1px;cursor:pointer" onclick="hRedescargarFotos('+i+')">⬇ RE-DESCARGAR FOTOS</button>';
+    }
+
     return '<div class="hcard '+h.col+'" id="hcard-'+i+'">'
       +'<div class="hcard-head" onclick="hToggle('+i+')">'
       +'<span class="hb">'+h.causa+'</span>'
@@ -2003,7 +2067,7 @@ function renderHist() {
       +'<span class="hm">'+(h.marca||'—')+'</span>'
       +'<span class="hres">'+resIco+' '+h.res+'</span>'
       +'<span class="ht">'+h.t+'</span>'
-      +badge
+      +badge+fbadge
       +'<span class="hchev">▾</span>'
       +'</div>'
       +'<div class="hcard-body">'
@@ -2012,8 +2076,13 @@ function renderHist() {
       +skuRow
       +'<div class="hinfo-row"><span class="hinfo-lbl">Resultado</span><span class="hinfo-val">'+resIco+' '+h.res+'</span></div>'
       +'<div class="hinfo-row"><span class="hinfo-lbl">Hora</span><span class="hinfo-val">'+h.t+'</span></div>'
-      +'<div style="font-size:.6rem;text-transform:uppercase;letter-spacing:.5px;color:var(--sub);margin-top:4px;margin-bottom:3px">📝 Nota / Justificación</div>'
+      +'<div style="font-size:.6rem;text-transform:uppercase;letter-spacing:.5px;color:var(--sub);margin-top:4px;margin-bottom:3px">📝 Nota</div>'
       +'<div class="hnota-box">'+notaHtml+'</div>'
+      +fotosHtml
+      +'<div class="hreclas-wrap">'
+      +'<div class="hreclas-lbl">🔄 Cambiar clasificación</div>'
+      +'<div class="hreclas-grid">'+reclasGrid+'</div>'
+      +'</div>'
       +'<div class="hcard-btns">'
       +'<button class="hcard-btn edit" onclick="notaAbrir('+i+')">✏️ EDITAR NOTA</button>'
       +'<button class="hcard-btn del" onclick="hEliminar('+i+',event)">🗑 ELIMINAR</button>'
@@ -2043,6 +2112,81 @@ function hEliminar(idx, e) {
     else G.st.n++;
   });
   updStats(); renderHist(); guardarEstado();
+}
+
+function hReclasificar(idx, col, etiq, res) {
+  const h = G.hist[idx];
+  if (!h) return;
+  // Restar del conteo anterior
+  if(h.col==='verde') G.st.p--;
+  else if(h.col==='amarillo') G.st.c--;
+  else if(h.col==='rojo') G.st.l--;
+  else G.st.n--;
+  // Aplicar nueva clasificación
+  h.col = col;
+  h.etiq = etiq;
+  h.res  = res;
+  // Sumar al nuevo conteo
+  if(col==='verde') G.st.p++;
+  else if(col==='amarillo') G.st.c++;
+  else if(col==='rojo') G.st.l++;
+  else G.st.n++;
+  // Asegurar que los conteos no sean negativos
+  G.st.p=Math.max(0,G.st.p); G.st.c=Math.max(0,G.st.c);
+  G.st.l=Math.max(0,G.st.l); G.st.n=Math.max(0,G.st.n);
+  updStats(); renderHist(); guardarEstado();
+  setTimeout(function(){hToggle(idx);}, 60);
+}
+
+// ── Fotos desde historial ──────────────────────────────────────────────────
+var _hFotoIdx  = -1; // índice en G.hist
+var _hSlotIdx  = -1; // índice del slot de foto
+
+function hEditarFoto(histIdx, slotIdx) {
+  _hFotoIdx = histIdx;
+  _hSlotIdx = slotIdx;
+  const h = G.hist[histIdx];
+  if (!h.fotos) h.fotos = [null,null,null,null,null,null];
+  // Copiar fotos del historial al buffer de cámara para edición
+  G_fotos = h.fotos.slice();
+  // Abrir cámara en el slot indicado
+  camSlotIdx = slotIdx;
+  document.getElementById('cam-slot-lbl').textContent =
+    'Editar foto ' + (slotIdx+1) + ' · ' + FOTO_SLOTS[slotIdx].lbl;
+  ocultarPreview();
+  document.getElementById('cam-overlay').style.display = 'flex';
+  // Cuando confirmen la foto se llama confirmarFotoHist en vez del confirmarFoto normal
+  _editandoHist = true;
+  iniciarStream();
+}
+
+var _editandoHist = false;
+
+function hBorrarFoto(histIdx, slotIdx, e) {
+  e.stopPropagation();
+  const h = G.hist[histIdx];
+  if (!h || !h.fotos) return;
+  if (!confirm('¿Borrar esta foto del historial?')) return;
+  h.fotos[slotIdx] = null;
+  guardarEstado();
+  renderHist();
+  setTimeout(function(){hToggle(histIdx);}, 60);
+}
+
+async function hRedescargarFotos(idx) {
+  const h = G.hist[idx];
+  if (!h || !h.fotos) return;
+  const nArt = String(h.nArt||'?').padStart(3,'0');
+  for (var fi = 0; fi < h.fotos.length; fi++) {
+    if (!h.fotos[fi]) continue;
+    const fname = nArt + '_0' + (fi+1) + '.jpg';
+    await new Promise(function(resolve){
+      const a = document.createElement('a');
+      a.href = h.fotos[fi]; a.download = fname;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(resolve, 350);
+    });
+  }
 }
 
 // ── Modal nota ─────────────────────────────────────────────────────────────
@@ -2442,13 +2586,34 @@ function tomarFoto() {
 }
 
 function confirmarFoto() {
-  G_fotos[camSlotIdx] = camFotoTemp;
+  const slotGuardado = camSlotIdx;
+  G_fotos[slotGuardado] = camFotoTemp;
   camFotoTemp = null;
   cerrarCamara();
+
+  if (_editandoHist && _hFotoIdx >= 0) {
+    // Modo edición desde historial
+    const h = G.hist[_hFotoIdx];
+    if (!h.fotos) h.fotos = [null,null,null,null,null,null];
+    h.fotos[slotGuardado] = G_fotos[slotGuardado];
+    guardarEstado();
+    renderHist();
+    // Re-descargar esa foto con el mismo nombre para sobreescribir
+    const nArt = String(h.nArt || '?').padStart(3,'0');
+    const fname = nArt + '_0' + (slotGuardado+1) + '.jpg';
+    const a = document.createElement('a');
+    a.href = h.fotos[slotGuardado]; a.download = fname;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    const histIdxGuardado = _hFotoIdx;
+    _editandoHist = false; _hFotoIdx = -1; _hSlotIdx = -1;
+    setTimeout(function(){hToggle(histIdxGuardado);}, 150);
+    return;
+  }
+
+  // Modo normal — resultado actual
   renderFotoSlots();
-  // Auto-avanzar al siguiente slot vacío
-  const sig = G_fotos.findIndex((f, i) => i > camSlotIdx && !f);
-  if (sig !== -1) setTimeout(() => abrirCamara(sig), 300);
+  const sig = G_fotos.findIndex(function(f, i){ return i > slotGuardado && !f; });
+  if (sig !== -1) setTimeout(function(){ abrirCamara(sig); }, 300);
 }
 
 function descartarFoto() {
