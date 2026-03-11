@@ -2436,9 +2436,6 @@ setInterval(()=>{document.getElementById('reloj').textContent=new Date().toLocal
 document.getElementById('reloj').textContent=new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&G.causa&&G.marca)iniciar();});
 
-// Cargar estado guardado al iniciar
-cargarEstado();
-
 // ══════════════════════════════════════════════════
 // MÓDULO DE FOTOS — cámara integrada (sin salir de la app)
 // ══════════════════════════════════════════════════
@@ -2681,6 +2678,9 @@ async function guardarTodasFotos(silencioso = false) {
 function limpiarFotos() {
   G_fotos = [null,null,null,null,null,null];
 }
+
+// ── Cargar estado al iniciar (al final para que FOTO_SLOTS ya esté definido) ──
+cargarEstado();
 
 </script>
 </body>
