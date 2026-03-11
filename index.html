@@ -179,15 +179,41 @@ input.w{border-color:var(--o);background:var(--odim)}
 .hh{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .hhtit{font-size:.58rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--sub)}
 .hhclr{background:none;border:none;color:var(--r);font-size:.68rem;cursor:pointer}
-.hi{display:flex;align-items:center;gap:6px;padding:6px 9px;background:var(--s1);border-radius:5px;margin-bottom:3px;font-size:.72rem;border-left:3px solid}
-.hi.verde{border-color:var(--g)}.hi.amarillo{border-color:var(--y)}.hi.rojo{border-color:var(--r)}.hi.bloq{border-color:var(--sub2)}
+/* acordeón */
+.hcard{border-radius:7px;margin-bottom:4px;overflow:hidden;border-left:3px solid;background:var(--s1)}
+.hcard.verde{border-color:var(--g)}.hcard.amarillo{border-color:var(--y)}.hcard.rojo{border-color:var(--r)}.hcard.bloq{border-color:var(--sub2)}
+.hcard-head{display:flex;align-items:center;gap:5px;padding:7px 9px;cursor:pointer;user-select:none;font-size:.72rem}
 .hb{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:.78rem;padding:1px 6px;border-radius:3px;flex-shrink:0}
 .verde .hb{background:var(--g);color:#000}.amarillo .hb{background:var(--y);color:#000}
 .rojo .hb{background:var(--r);color:#fff}.bloq .hb{background:var(--s3);color:var(--sub)}
 .hsku{font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--y);flex-shrink:0}
-.hm{font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hm{font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .hres{color:var(--sub);font-size:.65rem;flex-shrink:0}
 .ht{color:var(--sub2);font-size:.58rem;flex-shrink:0}
+.hchev{color:var(--sub2);font-size:.65rem;flex-shrink:0;transition:transform .2s;margin-left:2px}
+.hcard.open .hchev{transform:rotate(180deg)}
+.hnotabadge{font-size:.52rem;background:var(--s3);color:var(--blue);border-radius:3px;padding:1px 4px;flex-shrink:0}
+/* panel desplegable */
+.hcard-body{display:none;border-top:1px solid var(--border);padding:9px 11px}
+.hcard.open .hcard-body{display:block}
+.hinfo-row{display:flex;gap:6px;font-size:.72rem;margin-bottom:4px}
+.hinfo-lbl{color:var(--sub);min-width:58px;flex-shrink:0;font-size:.6rem;text-transform:uppercase;letter-spacing:.5px;padding-top:2px}
+.hinfo-val{color:var(--text);font-weight:600;flex:1;line-height:1.3}
+.hnota-box{margin-top:6px;background:var(--s2);border:1px solid var(--border2);border-radius:6px;padding:8px 10px;font-size:.73rem;color:#ccc;line-height:1.45;min-height:34px}
+.hnota-empty{color:var(--sub2);font-style:italic}
+.hcard-btns{display:flex;gap:7px;margin-top:9px}
+.hcard-btn{flex:1;padding:8px;border:none;border-radius:6px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:.88rem;letter-spacing:1px;cursor:pointer}
+.hcard-btn.edit{background:var(--s3);color:var(--blue);border:1px solid var(--border2)}
+.hcard-btn.del{background:var(--rdim);color:var(--r);border:1px solid #ff335522}
+/* modal nota */
+.nota-ov{position:fixed;inset:0;background:#000c;z-index:600;display:flex;align-items:flex-end;justify-content:center;animation:fi .15s ease}
+.nota-box{background:var(--s1);border-radius:18px 18px 0 0;width:100%;max-width:480px;padding:18px 16px 28px;border-top:2px solid var(--border2);animation:su .2s ease}
+.nota-box-tit{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1.2rem;margin-bottom:3px}
+.nota-box-sub{font-size:.72rem;color:var(--sub);margin-bottom:11px}
+.nota-box textarea{width:100%;background:var(--s2);border:1.5px solid var(--border2);color:var(--text);padding:10px 12px;border-radius:8px;font-family:'Inter',sans-serif;font-size:.88rem;outline:none;resize:none;min-height:88px;line-height:1.45}
+.nota-box textarea:focus{border-color:var(--g)}
+.nota-box-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.nota-box-btns button{padding:12px;border:none;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1rem;letter-spacing:1.5px;cursor:pointer}
 
 @keyframes fi{from{opacity:0}to{opacity:1}}
 @keyframes su{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
@@ -339,6 +365,19 @@ input.w{border-color:var(--o);background:var(--odim)}
     <button id="cam-flash-btn" onclick="toggleFlash()" style="background:#222;border:1px solid #333;color:#ccc;border-radius:50%;width:44px;height:44px;font-size:1.3rem;cursor:pointer" title="Flash">⚡</button>
     <button onclick="tomarFoto()" style="background:#fff;border:none;border-radius:50%;width:68px;height:68px;font-size:2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 4px #333">📷</button>
     <button onclick="voltearCamara()" style="background:#222;border:1px solid #333;color:#ccc;border-radius:50%;width:44px;height:44px;font-size:1.2rem;cursor:pointer">🔄</button>
+  </div>
+</div>
+
+<!-- MODAL NOTA -->
+<div id="nota-ov" class="nota-ov" style="display:none" onclick="if(event.target===this)notaCancelar()">
+  <div class="nota-box">
+    <div class="nota-box-tit" id="nota-tit">✏️ Editar nota</div>
+    <div class="nota-box-sub" id="nota-sub"></div>
+    <textarea id="nota-txt" placeholder="Escribe el motivo o justificación de esta clasificación…"></textarea>
+    <div class="nota-box-btns">
+      <button style="background:var(--s3);color:var(--sub);border:1px solid var(--border2)" onclick="notaCancelar()">✕ CANCELAR</button>
+      <button style="background:var(--g);color:#000" onclick="notaGuardar()">✓ GUARDAR</button>
+    </div>
   </div>
 </div>
 
@@ -1812,7 +1851,7 @@ function abrirModal() {
 
   // Fotos
   const fotos=FOTOS[G.cat]||FOTOS.general;
-  html+=`<div class="foto-sec"><div class="foto-tit">📸 Fotos a enviar</div>${fotos.map((f,i)=>`<div class="foto-item"><span class="fnum">${i+1}</span><span>${f}</span></div>`).join('')}</div>`;
+  html+='<div class="foto-sec"><div class="foto-tit">📸 Fotos a enviar</div>'+fotos.map(function(f,i){return '<div class="foto-item"><span class="fnum">'+(i+1)+'</span><span>'+f+'</span></div>';}).join('')+'</div>';
 
   document.getElementById('mbody').innerHTML=html;
   actualizarLiveBar();
@@ -1949,27 +1988,86 @@ function renderHist() {
   const hw=document.getElementById('hw'),hl=document.getElementById('hl');
   if (!G.hist.length){hw.style.display='none';return;}
   hw.style.display='block';
-  hl.innerHTML=G.hist.slice(0,30).map((h,i)=>`<div class="hi ${h.col}" style="flex-direction:column;align-items:flex-start;gap:3px;padding:8px 9px">
-    <div style="display:flex;align-items:center;gap:6px;width:100%">
-      <span class="hb">${h.causa}</span>
-      ${h.sku?`<span class="hsku">#${h.sku}</span>`:''}
-      <span class="hm">${h.marca||'—'}</span>
-      <span class="hres">${h.res}</span>
-      <span class="ht">${h.t}</span>
-      <button onclick="editarHist(${i})" title="Editar nota" style="margin-left:auto;background:none;border:none;color:var(--blue);font-size:.75rem;cursor:pointer;flex-shrink:0;padding:0 2px">✏️</button>
-    </div>
-    ${h.nota?`<div style="font-size:.68rem;color:#aaa;padding:2px 2px 0;line-height:1.35;border-left:2px solid var(--border2);padding-left:6px;margin-top:1px">📝 ${h.nota}</div>`:''}
-  </div>`).join('');
+  hl.innerHTML=G.hist.slice(0,30).map(function(h,i){
+    const resIco = h.col==='verde'?'✅':h.col==='amarillo'?'🟡':h.col==='rojo'?'🔴':'⚫';
+    const hasNota = !!(h.nota && h.nota.trim());
+    const causaDesc = (CAUSAS[h.causa] && CAUSAS[h.causa].d) ? ' · '+CAUSAS[h.causa].d : '';
+    const skuHead  = h.sku ? '<span class="hsku">#'+h.sku+'</span>' : '';
+    const badge    = hasNota ? '<span class="hnotabadge">📝</span>' : '';
+    const skuRow   = h.sku ? '<div class="hinfo-row"><span class="hinfo-lbl">SKU</span><span class="hinfo-val" style="font-family:monospace;color:var(--y)">'+h.sku+'</span></div>' : '';
+    const notaHtml = hasNota ? h.nota : '<span class="hnota-empty">Sin nota registrada</span>';
+    return '<div class="hcard '+h.col+'" id="hcard-'+i+'">'
+      +'<div class="hcard-head" onclick="hToggle('+i+')">'
+      +'<span class="hb">'+h.causa+'</span>'
+      +skuHead
+      +'<span class="hm">'+(h.marca||'—')+'</span>'
+      +'<span class="hres">'+resIco+' '+h.res+'</span>'
+      +'<span class="ht">'+h.t+'</span>'
+      +badge
+      +'<span class="hchev">▾</span>'
+      +'</div>'
+      +'<div class="hcard-body">'
+      +'<div class="hinfo-row"><span class="hinfo-lbl">Causa</span><span class="hinfo-val">'+h.causa+causaDesc+'</span></div>'
+      +'<div class="hinfo-row"><span class="hinfo-lbl">Marca</span><span class="hinfo-val">'+(h.marca||'—')+'</span></div>'
+      +skuRow
+      +'<div class="hinfo-row"><span class="hinfo-lbl">Resultado</span><span class="hinfo-val">'+resIco+' '+h.res+'</span></div>'
+      +'<div class="hinfo-row"><span class="hinfo-lbl">Hora</span><span class="hinfo-val">'+h.t+'</span></div>'
+      +'<div style="font-size:.6rem;text-transform:uppercase;letter-spacing:.5px;color:var(--sub);margin-top:4px;margin-bottom:3px">📝 Nota / Justificación</div>'
+      +'<div class="hnota-box">'+notaHtml+'</div>'
+      +'<div class="hcard-btns">'
+      +'<button class="hcard-btn edit" onclick="notaAbrir('+i+')">✏️ EDITAR NOTA</button>'
+      +'<button class="hcard-btn del" onclick="hEliminar('+i+',event)">🗑 ELIMINAR</button>'
+      +'</div>'
+      +'</div>'
+      +'</div>';
+  }).join('');
 }
 
-function editarHist(idx) {
-  const h = G.hist[idx];
+function hToggle(idx) {
+  var card = document.getElementById('hcard-'+idx);
+  if (!card) return;
+  var isOpen = card.classList.contains('open');
+  document.querySelectorAll('.hcard.open').forEach(function(c){c.classList.remove('open');});
+  if (!isOpen) card.classList.add('open');
+}
+
+function hEliminar(idx, e) {
+  e.stopPropagation();
+  if (!confirm('¿Eliminar este artículo del historial?')) return;
+  G.hist.splice(idx, 1);
+  G.st={p:0,c:0,l:0,n:0};
+  G.hist.forEach(function(h){
+    if(h.col==='verde') G.st.p++;
+    else if(h.col==='amarillo') G.st.c++;
+    else if(h.col==='rojo') G.st.l++;
+    else G.st.n++;
+  });
+  updStats(); renderHist(); guardarEstado();
+}
+
+// ── Modal nota ─────────────────────────────────────────────────────────────
+var _notaIdx = -1;
+function notaAbrir(idx) {
+  var h = G.hist[idx];
   if (!h) return;
-  const nota = prompt(`📝 Nota para "${h.marca}" → ${h.res}\n\nEdita o agrega justificación:`, h.nota||'');
-  if (nota === null) return; // canceló
-  G.hist[idx].nota = nota.trim();
+  _notaIdx = idx;
+  document.getElementById('nota-tit').textContent = '✏️ ' + (h.marca||'Artículo');
+  document.getElementById('nota-sub').textContent = 'Causa '+h.causa+' · '+h.res+' · '+h.t;
+  document.getElementById('nota-txt').value = h.nota || '';
+  document.getElementById('nota-ov').style.display = 'flex';
+  setTimeout(function(){document.getElementById('nota-txt').focus();}, 200);
+}
+function notaCancelar() {
+  document.getElementById('nota-ov').style.display = 'none';
+  _notaIdx = -1;
+}
+function notaGuardar() {
+  if (_notaIdx < 0) return;
+  G.hist[_notaIdx].nota = document.getElementById('nota-txt').value.trim();
+  notaCancelar();
   renderHist();
   guardarEstado();
+  setTimeout(function(){hToggle(_notaIdx);}, 60);
 }
 function clrH(){G.hist=[];G.st={p:0,c:0,l:0,n:0};updStats();renderHist();guardarEstado();}
 
@@ -2111,49 +2209,82 @@ function exportarJSON() {
 }
 
 function exportarPDF() {
-  const hoy = new Date().toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long'});
-  const total = G.st.p + G.st.c + G.st.l + G.st.n;
-  const rows = G.hist.slice(0,100).map((h,i)=>{
-    const ico = h.col==='verde'?'✅':h.col==='amarillo'?'🟡':h.col==='rojo'?'🔴':'⚫';
-    const notaCell = h.nota ? `<td style="padding:5px 8px;font-size:11px;color:#555;font-style:italic">${h.nota}</td>` : `<td style="padding:5px 8px;color:#ccc">—</td>`;
-    return `<tr style="border-bottom:1px solid #eee;font-size:12px">
-      <td style="padding:5px 8px;color:#666">${h.t}</td>
-      <td style="padding:5px 8px;font-weight:700">${h.causa}</td>
-      <td style="padding:5px 8px">${h.marca||'—'}</td>
-      <td style="padding:5px 8px;color:#999">${h.sku||''}</td>
-      <td style="padding:5px 8px">${ico} ${h.res}</td>
-      ${notaCell}
-    </tr>`;
+  var hoy  = new Date().toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long'});
+  var hora = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+  var total = G.st.p + G.st.c + G.st.l + G.st.n;
+
+  // ── PÁGINA 1: tabla resumen ──────────────────────────────────────────────
+  var rows1 = G.hist.slice(0,100).map(function(h,i){
+    var ico = h.col==='verde'?'✅':h.col==='amarillo'?'🟡':h.col==='rojo'?'🔴':'⚫';
+    var bg  = h.col==='verde'?'#f0fff8':h.col==='amarillo'?'#fffde7':h.col==='rojo'?'#fff0f3':'#fafafa';
+    return '<tr style="border-bottom:1px solid #eee;background:'+bg+';font-size:12px">'
+      +'<td style="padding:5px 8px;color:#666">'+(i+1)+'</td>'
+      +'<td style="padding:5px 8px;color:#666">'+h.t+'</td>'
+      +'<td style="padding:5px 8px;font-weight:700">'+h.causa+'</td>'
+      +'<td style="padding:5px 8px">'+(h.marca||'—')+'</td>'
+      +'<td style="padding:5px 8px;font-family:monospace;color:#999">'+(h.sku||'')+'</td>'
+      +'<td style="padding:5px 8px;font-weight:600">'+ico+' '+h.res+'</td>'
+      +'</tr>';
   }).join('');
 
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>DS Clasificador ${hoy}</title>
-  <style>body{font-family:Arial,sans-serif;padding:20px;color:#111}
-  h1{font-size:18px;margin-bottom:4px} .sub{color:#888;font-size:12px;margin-bottom:16px}
-  .stats{display:flex;gap:16px;margin-bottom:20px}
-  .sbox{padding:12px 20px;border-radius:8px;text-align:center;min-width:80px}
-  .snum{font-size:28px;font-weight:900;line-height:1}
-  .slbl{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#666;margin-top:2px}
-  table{width:100%;border-collapse:collapse}
-  th{text-align:left;padding:6px 8px;background:#f5f5f5;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:#888}
-  td.nota{font-size:11px;color:#555;font-style:italic;max-width:220px;word-wrap:break-word}
-  @media print{body{padding:10px}}</style></head><body>
-  <h1>📦 DS CLASIFICADOR · BAZ ELEKTRA</h1>
-  <div class="sub">${hoy} · ${new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'})} · Total: ${total} piezas</div>
-  <div class="stats">
-    <div class="sbox" style="background:#00ff871a;border:2px solid #00ff87"><div class="snum" style="color:#00cc66">${G.st.p}</div><div class="slbl">Proveedor</div></div>
-    <div class="sbox" style="background:#ffcc001a;border:2px solid #ffcc00"><div class="snum" style="color:#cc9900">${G.st.c}</div><div class="slbl">Carpa</div></div>
-    <div class="sbox" style="background:#ff33551a;border:2px solid #ff3355"><div class="snum" style="color:#cc0022">${G.st.l}</div><div class="slbl">Lote</div></div>
-    <div class="sbox" style="background:#f5f5f5;border:2px solid #ccc"><div class="snum" style="color:#999">${G.st.n}</div><div class="slbl">No proc.</div></div>
-  </div>
-  <table><thead><tr><th>Hora</th><th>Causa</th><th>Marca</th><th>SKU</th><th>Resultado</th><th>📝 Nota / Justificación</th></tr></thead>
-  <tbody>${rows}</tbody></table>
-  <script>window.onload=function(){window.print()}<\/script>
-  </body></html>`;
+  // ── PÁGINA 2: tarjetas con notas ────────────────────────────────────────
+  var rows2 = G.hist.slice(0,100).map(function(h,i){
+    var ico = h.col==='verde'?'✅':h.col==='amarillo'?'🟡':h.col==='rojo'?'🔴':'⚫';
+    var cb  = h.col==='verde'?'#00cc66':h.col==='amarillo'?'#cc9900':h.col==='rojo'?'#cc0022':'#999';
+    var bgC = h.col==='verde'?'#f0fff8':h.col==='amarillo'?'#fffde7':h.col==='rojo'?'#fff0f3':'#fafafa';
+    var hasNota = !!(h.nota && h.nota.trim());
+    var notaTxt = hasNota ? h.nota : 'Sin nota registrada.';
+    var notaStyle = hasNota ? 'color:#222' : 'color:#aaa;font-style:italic';
+    var skuSpan = h.sku ? ' <span style="font-family:monospace;color:#888;font-size:11px">#'+h.sku+'</span>' : '';
+    return '<div style="border:2px solid '+cb+';border-radius:8px;padding:12px 14px;margin-bottom:10px;background:'+bgC+';break-inside:avoid">'
+      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'
+      +'<span style="font-size:20px;font-weight:900;color:'+cb+';font-family:Arial">'+(i+1)+'</span>'
+      +'<div><div style="font-size:13px;font-weight:700">'+(h.marca||'—')+skuSpan+'</div>'
+      +'<div style="font-size:11px;color:#888">C'+h.causa+' · '+h.t+' · '+ico+' '+h.res+'</div></div>'
+      +'</div>'
+      +'<div style="background:#fff;border:1px solid #ddd;border-radius:5px;padding:8px 10px;font-size:12px;line-height:1.6;'+notaStyle+'">'+notaTxt+'</div>'
+      +'</div>';
+  }).join('');
 
-  const blob = new Blob([html], {type:'text/html'});
-  const url = URL.createObjectURL(blob);
-  window.open(url, '_blank');
+  // ── HTML final ───────────────────────────────────────────────────────────
+  var css = 'body{font-family:Arial,sans-serif;padding:20px;color:#111;font-size:13px}'
+    +'h1{font-size:18px;margin-bottom:3px}'
+    +'.sub{color:#888;font-size:12px;margin-bottom:14px}'
+    +'.stats{display:flex;gap:12px;margin-bottom:18px;flex-wrap:wrap}'
+    +'.sbox{padding:10px 18px;border-radius:8px;text-align:center;min-width:70px}'
+    +'.snum{font-size:26px;font-weight:900;line-height:1}'
+    +'.slbl{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#666;margin-top:2px}'
+    +'table{width:100%;border-collapse:collapse}'
+    +'th{text-align:left;padding:6px 8px;background:#f0f0f0;font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:#888;border-bottom:2px solid #ddd}'
+    +'.pb{page-break-before:always;padding-top:16px}'
+    +'@media print{body{padding:10px}.pb{page-break-before:always}}';
+
+  var statsHtml = '<div class="stats">'
+    +'<div class="sbox" style="background:#e6fff5;border:2px solid #00cc66"><div class="snum" style="color:#00cc66">'+G.st.p+'</div><div class="slbl">Proveedor</div></div>'
+    +'<div class="sbox" style="background:#fffde7;border:2px solid #cc9900"><div class="snum" style="color:#cc9900">'+G.st.c+'</div><div class="slbl">Carpa</div></div>'
+    +'<div class="sbox" style="background:#fff0f3;border:2px solid #cc0022"><div class="snum" style="color:#cc0022">'+G.st.l+'</div><div class="slbl">Lote</div></div>'
+    +'<div class="sbox" style="background:#f5f5f5;border:2px solid #ccc"><div class="snum" style="color:#999">'+G.st.n+'</div><div class="slbl">No proc.</div></div>'
+    +'</div>';
+
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>DS Clasificador</title><style>'+css+'</style></head><body>'
+    // — página 1 —
+    +'<h1>📦 DS CLASIFICADOR · BAZ ELEKTRA</h1>'
+    +'<div class="sub">'+hoy+' · '+hora+' · Total: '+total+' piezas</div>'
+    +statsHtml
+    +'<table><thead><tr>'
+    +'<th>#</th><th>Hora</th><th>Causa</th><th>Marca</th><th>SKU</th><th>Resultado</th>'
+    +'</tr></thead><tbody>'+rows1+'</tbody></table>'
+    // — página 2 —
+    +'<div class="pb">'
+    +'<h1>📝 DETALLE Y JUSTIFICACIONES</h1>'
+    +'<div class="sub">'+hoy+' · '+total+' piezas · cada tarjeta muestra la nota de clasificación</div>'
+    +rows2
+    +'</div>'
+    +'<script>window.onload=function(){window.print()}<\/script>'
+    +'</body></html>';
+
+  var blob = new Blob([html], {type:'text/html'});
+  window.open(URL.createObjectURL(blob), '_blank');
 }
 
 // Reloj
