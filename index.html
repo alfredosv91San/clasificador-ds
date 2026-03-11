@@ -330,7 +330,7 @@ input.w{border-color:var(--o);background:var(--odim)}
     </div>
   </div>
   <!-- Controls -->
-  <div style="padding:16px 20px 28px;background:#111;display:flex;align-items:center;justify-content:center;gap:20px;flex-shrink:0">
+  <div id="cam-controls" style="padding:16px 20px 28px;background:#111;display:flex;align-items:center;justify-content:center;gap:20px;flex-shrink:0">
     <button id="cam-flash-btn" onclick="toggleFlash()" style="background:#222;border:1px solid #333;color:#ccc;border-radius:50%;width:44px;height:44px;font-size:1.3rem;cursor:pointer" title="Flash">⚡</button>
     <button onclick="tomarFoto()" style="background:#fff;border:none;border-radius:50%;width:68px;height:68px;font-size:2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 4px #333">📷</button>
     <button onclick="voltearCamara()" style="background:#222;border:1px solid #333;color:#ccc;border-radius:50%;width:44px;height:44px;font-size:1.2rem;cursor:pointer">🔄</button>
@@ -370,7 +370,7 @@ const CAUSAS = {
 // Marcas que NUNCA van a proveedor (solo carpa o lote)
 const NOPROV = ['telcel','iphone','marcas propias','azteca']; // HKPRO y Fancy SÍ pueden ir a Proveedor si no funcionan
 // Marcas de taller externo para causas CF
-const TALLER = ['lg','samsung','panasonic','koblenz','whirlpool','mabe','daewoo'];
+const TALLER = ['lg','samsung','panasonic','koblenz','daewoo']; // Solo estos van directo a taller externo
 // SKUs bloqueados
 const skuBloq = s => ['991','992'].includes(s) || s.endsWith('991') || s.endsWith('992') || s.includes('2903');
 // Productos no revisables
@@ -407,6 +407,8 @@ const CATS = {
   lbExtra:    {ico:'🌊', lbl:'Línea Blanca Extra'},
   accTech:    {ico:'🎧', lbl:'Accesorios Tech'},
   hogarExtra: {ico:'🛏️', lbl:'Hogar / Colchón'},
+  patinElec:  {ico:'🛴', lbl:'Movilidad · Patín Eléctrico'},
+  maqCoser:   {ico:'🧵', lbl:'Enseres · Máquina de Coser'},
   general:    {ico:'📦', lbl:'Producto General'},
 };
 
@@ -420,14 +422,16 @@ function detectCat(marca, causa) {
   if (/\bestufa\b/.test(m)) return 'estufa';
   if (/microond/.test(m)) return 'microondas';
   // ── ENSERES PEQUEÑOS (antes de licuadora y plancha)
-  if (/ventilad|abanico|\bfan\s+de\s+/.test(m)) return 'ventilador';
+  if (/ventilad|abanico|\bfan\s+de\s+|aire\s+port[aá]til|enfriador\s+port[aá]til|mini\s+enfriador|cooler\s+port/.test(m)) return 'ventilador';
+  if (/pat[ií]n\s+el[eé]c|scooter\s+el[eé]c|patineta\s+el[eé]c/.test(m)) return 'patinElec';
+  if (/m[aá]quina\s+de\s+coser|coser\s+m[aá]quina|brother|singer\s+/.test(m)) return 'maqCoser';
   if (/batidor|sandwi|wafl|tostador|arrocera|olla\s+elec|olla\s+pres|\bparrilla\s+elec|freidora|air\s+fryer|horno\s+elec|horno\s+tost|horno\s+digit|aspirador|extractor\s+de\s+jug|robot\s+coci/.test(m)) return 'enseresPeq';
   // ── ENSERES ORIGINALES
   if (/licuad/.test(m)) return 'licuadora';
   if (/\bplancha\b/.test(m)) return 'plancha';
   if (/\bcafetera\b|espresso|expresso/.test(m)) return 'cafetera';
   // ── LÍNEA BLANCA EXTRA
-  if (/despachador|garraf/.test(m)) return 'despachador';
+  if (/despachador|garraf|enfriador\s+de\s+agua|enfriador\s+garraf/.test(m)) return 'despachador';
   if (/\bboiler\b|calentador\s+de\s+agua|calentador\s+paso/.test(m)) return 'boiler';
   if (/\bsecadora\b|lavavajill|lavaplatos|lavaloza/.test(m)) return 'lbExtra';
   // ── CÓMPUTO Y TABLETS
@@ -863,8 +867,7 @@ lavadora:[
   {s:'📊 Estado para CARPA',qs:[
     {q:'¿Sin golpes ligeros en cubiertas? (golpe leve = Carpa B)',t:'warn',k:'sinGolpe'},
     {q:'¿Cubiertas SIN despostillado severo? (golpe severo = LOTE C)',t:'warn',k:'sinRoto'},
-    {q:'¿Manguera de llenado presente? (falta = LOTE C)',t:'crit',k:'mang',
-      info:'Sin manguera de llenado → LOTE C'},
+    {q:'¿Manguera de llenado presente? (falta = Carpa B si funciona)',t:'warn',k:'mang'},
     {q:'¿Panel, perillas y patas presentes?',t:'warn',k:'panel'},
     {q:'¿Estética SUPERIOR al 90%?',t:'warn',k:'est90'},
   ]},
@@ -1057,7 +1060,10 @@ enseresPeq:[
       info:'Cable dañado → riesgo eléctrico, Lote C'},
     {q:'¿Sin olor a quemado ni señal de cortocircuito?',t:'crit',k:'sinQuem',
       info:'Quemado → Lote C/D'},
-    {q:'¿Aspas, cuchillas o elementos móviles SIN rotura?',t:'crit',k:'sinRoto'},
+    {q:'¿Aspas, cuchillas, cesta o bandeja SIN rotura ni deformación?',t:'crit',k:'sinRoto',
+      info:'Cesta/bandeja de freidora rota o faltante → Lote D'},
+    {q:'¿Sin plaga? (si hay → emplayar y avisar DS)',t:'crit',k:'sinPlaga'},
+    {q:'¿Sin contaminación por moho u hongo?',t:'warn',k:'sinMoho'},
   ]},
   {s:'✅ Requisitos para PROVEEDOR',qs:[
     {q:'¿# Serie coincide con etiqueta del producto?',t:'prov',k:'serie'},
@@ -1155,6 +1161,50 @@ hogarExtra:[
     {q:'¿Sin desgaste mayor en tela/cubierta?',t:'warn',k:'sinGolpe'},
   ]},
 ],
+patinElec:[
+  {s:'⛔ Movilidad Eléctrica — NO aplica Proveedor',qs:[
+    {q:'¿El patín/scooter ENCIENDE y circula? (no enciende = LOTE C/D)',t:'crit',k:'enc',
+      info:'No enciende → LOTE C si sin daño estructural'},
+    {q:'¿Cuadro/estructura SIN rotura ni doblado? (roto = LOTE D)',t:'crit',k:'cuadro',
+      info:'Estructura rota → LOTE D irreparable'},
+    {q:'¿Frenos funcionan correctamente? (sin frenos = riesgo seguridad)',t:'crit',k:'frenos',
+      info:'Sin frenos → LOTE D (riesgo de seguridad)'},
+    {q:'¿Batería retiene carga adecuadamente?',t:'crit',k:'carga',
+      info:'No retiene carga → LOTE C'},
+    {q:'¿Sin plaga? (si hay → emplayar y avisar DS)',t:'crit',k:'sinPlaga'},
+  ]},
+  {s:'📊 Estado para CARPA A / B',qs:[
+    {q:'¿Sin golpes ni rayones en estructura? (golpe menor = Carpa B)',t:'warn',k:'sinGolpe'},
+    {q:'¿Ruedas, manubrio y plataforma en buen estado?',t:'warn',k:'acc'},
+    {q:'¿Con accesorios completos (cargador, llaves)?',t:'warn',k:'ctrl'},
+    {q:'¿Estética superior al 90%?',t:'warn',k:'est90'},
+  ]},
+],
+maqCoser:[
+  {s:'🔴 Condiciones críticas',qs:[
+    {q:'¿La máquina ENCIENDE y el mecanismo de costura funciona?',t:'crit',k:'enc',
+      info:'No enciende → puede ir a Proveedor si cumple garantía'},
+    {q:'¿Cable de corriente y clavija SIN daño ni peladura?',t:'crit',k:'cable',
+      info:'Cable dañado → riesgo eléctrico, Lote C'},
+    {q:'¿Estructura y cubierta SIN rotura severa?',t:'crit',k:'sinRoto',
+      info:'Estructura rota → Lote D'},
+    {q:'¿Sin olor a quemado ni bloqueo mecánico?',t:'crit',k:'sinQuem',
+      info:'Quemado o trabada → Lote C/D'},
+    {q:'¿Sin plaga? (si hay → emplayar y avisar DS)',t:'crit',k:'sinPlaga'},
+  ]},
+  {s:'✅ Requisitos para PROVEEDOR',qs:[
+    {q:'¿# Serie coincide con etiqueta?',t:'prov',k:'serie'},
+    {q:'¿Caja y empaque originales (si aplica)?',t:'prov',k:'caja'},
+    {q:'¿Accesorios completos y originales? (pedal, cables, hilos, piezas)',t:'prov',k:'accProv'},
+    {q:'¿Sin golpes ni rayaduras?',t:'prov',k:'sinGolpeProv'},
+    {q:'¿Estética superior al 90%?',t:'prov',k:'est90'},
+  ]},
+  {s:'📊 Estado para CARPA A / B',qs:[
+    {q:'¿Sin golpe o raspón menor en carcasa?',t:'warn',k:'sinGolpe'},
+    {q:'¿Pedal, bobina y accesorios básicos presentes?',t:'warn',k:'acc'},
+    {q:'¿Estética superior al 90%?',t:'warn',k:'est90'},
+  ]},
+],
 general:[
   {s:'🔴 Condiciones críticas',qs:[
     {q:'¿Enciende / funciona correctamente?',t:'crit',k:'enc',
@@ -1213,7 +1263,7 @@ function calcClasif(cat, resp, causaInfo, esMarcaNoProv) {
   const allPregs = pregs.flatMap(s=>s.qs);
 
   // Categorías que NUNCA van a Proveedor según PDF
-  const noProvForzado = esMarcaNoProv || cat==='moto' || cat==='muebles';
+  const noProvForzado = esMarcaNoProv || cat==='moto' || cat==='muebles' || cat==='patinElec';
 
   const algResp = Object.keys(resp).length > 0;
   if (!algResp) return {color:'?',etiq:'?',razon:'Responde las preguntas para ver clasificación'};
@@ -1363,7 +1413,13 @@ function calcClasif(cat, resp, causaInfo, esMarcaNoProv) {
   if (no('tinaRota')) return {color:'rojo',etiq:'LOTE D',razon:'Tina rota → LOTE D'};
   if (no('sinFuga') && ['cafetera','plancha','boiler'].includes(cat))
     return {color:'rojo',etiq:'LOTE D',razon:'Fugas detectadas → LOTE D (riesgo físico)'};
-  if (no('sinRoto') && noFunciona) return {color:'rojo',etiq:'LOTE D',razon:'Roto/estrellado + no enciende → irreparable'};
+  // Roto + no funciona = LOTE D solo para productos donde es realmente irreparable
+  // (pantalla estrellada, consola rota, etc.) — para LB/enseres, daño estético no = LOTE D
+  if (no('sinRoto') && noFunciona && ['telefonia','computo','tablet','pantalla','consola','bocina','camara','carAudio','componentes'].includes(cat))
+    return {color:'rojo',etiq:'LOTE D',razon:'Roto/estrellado + no enciende → irreparable'};
+  // LB/enseres: roto + no funciona = LOTE C (puede repararse)
+  if (no('sinRoto') && noFunciona)
+    return {color:'rojo',etiq:'LOTE C',razon:'Daño físico + no funciona → requiere inversión'};
 
   // ── PASO 2: Verificar IMEI/Serie — si no coincide, no puede ir a Proveedor ──
   const imeiOk = !no('imei') && !no('serie');   // coincide (o no aplica)
@@ -1380,15 +1436,24 @@ function calcClasif(cat, resp, causaInfo, esMarcaNoProv) {
   //   - MÁS: no funcionar por falla de origen ES válido para Proveedor
   //           (el PDF dice "producto con defecto de fabricación o falla de origen")
   // Línea Blanca: caja NO es requisito para Proveedor (lavadoras, estufas, refris, etc.)
-  const esLB = ['lavadora','refrigerador','estufa','microondas','lbExtra','despachador','boiler'].includes(cat);
+  // LB + ventiladores/abanicos/enseres pequeños: caja NO es requisito para Proveedor
+  const esLB = ['lavadora','refrigerador','estufa','microondas','lbExtra','despachador','boiler','ventilador','enseresPeq','maqCoser'].includes(cat);
   if (!noProvForzado && !imeiFalla) {
-    const provFail = provQs.filter(p=>no(p.k) && !(esLB && p.k==='caja'));
-    const provPend = provQs.filter(p=>pen(p.k) && !(esLB && p.k==='caja'));
+    // LB: caja y accesorios NO bloquean Proveedor (jefe: lavadora sin manguera → Proveedor igual)
+    // Enseres pequeños/ventiladores: caja tampoco bloquea
+    const esLBStrict = ['lavadora','refrigerador','estufa','lbExtra'].includes(cat);
+    // LB estricta: caja, accesorios y golpes estéticos NO bloquean Proveedor
+    // Solo tina rota, fuga, plaga o moho lo bloquean (ya manejados en bloqProv)
+    const skipForLBStrict = k => esLBStrict && ['caja','accProv','sinGolpeProv','est90'].includes(k);
+    const provFail = provQs.filter(p=>no(p.k) && !(esLB && p.k==='caja') && !skipForLBStrict(p.k));
+    const provPend = provQs.filter(p=>pen(p.k) && !(esLB && p.k==='caja') && !skipForLBStrict(p.k));
 
     // Descalificadores absolutos de Proveedor (además de los LOTE D ya detectados)
-    // Bloqueo de cuenta = no puede ir a Proveedor
+    // Para LB: sinRoto = golpe en cubierta, NO bloquea Proveedor (jefe lo confirmó)
+    // Para conectividad/entretenimiento: sinRoto = pantalla/carcasa rota = sí bloquea
+    const sinRotoBloqProv = no('sinRoto') && !esLBStrict;
     const bloqProv = no('sinBlq') || no('sinHum') || no('sinCalor') || no('sinPaz')
-                  || no('sinRoto') || no('sinLiq') || no('sinFuga');
+                  || sinRotoBloqProv || no('sinLiq') || no('sinFuga');
 
     if (!bloqProv && provFail.length===0) {
       // PROVEEDOR solo si NO FUNCIONA (falla de origen/fabricación)
@@ -1420,7 +1485,7 @@ function calcClasif(cat, resp, causaInfo, esMarcaNoProv) {
   // No enciende/funciona (ya descartado path Proveedor por condición anterior)
   // Non-conectividad: no funciona → LOTE C (conectividad already sent to LOTE D above)
   if (noFunciona && !['telefonia','computo','tablet'].includes(cat))
-    return {color:'rojo',etiq:'LOTE C',razon:'No funciona → requiere reparación (inversión)'};
+    return {color:'rojo',etiq:'LOTE C',razon:'No funciona + tiene daño/condición que impide Proveedor → Lote C (requiere reparación)'};
   // IMEI/Serie no coincide → producto alterado
   if (imeiFalla)     return {color:'rojo',etiq:'LOTE C',razon:'IMEI/# Serie no coincide → producto alterado, no va a Proveedor'};
   // Humedad aunque encienda → LOTE C
@@ -1435,6 +1500,9 @@ function calcClasif(cat, resp, causaInfo, esMarcaNoProv) {
   const loteC_keys = ['puerta','vaso','cable','sinMoho','jarra','boc','leeDisc','bt','pantallaOk','mang','tarjeta','lentesAd','panel','suela','quemadores','ctrl','est50','grifos','sinOxido','aspas','sinDesp','carga','sinBlq'];
   for (const k of loteC_keys) {
     if (no(k)) {
+      // Para LB que NO funciona: manguera/accesorios faltantes no mandan a Lote C
+      // (el jefe confirmó: lavadora sin manguera + no funciona = Proveedor)
+      if (noFunciona && esLBStrict && k==='mang') continue;
       const preg = allPregs.find(p=>p.k===k);
       return {color:'rojo',etiq:'LOTE C',razon:`Falla funcional: <b>${preg?.q||k}</b> → requiere inversión`};
     }
@@ -1706,7 +1774,7 @@ const FOTOS = {
 };
 // Categorías sin fotos específicas usan general
 ['bicicleta','muebles','licuadora','plancha','cafetera','componentes','camara',
- 'carAudio','ventilador','despachador','boiler','enseresPeq','cuidadoPers',
+ 'carAudio','ventilador','despachador','boiler','enseresPeq','cuidadoPers','patinElec','maqCoser',
  'lbExtra','accTech','hogarExtra'].forEach(c=>{ if(!FOTOS[c]) FOTOS[c]=FOTOS.general; });
 
 // ══════════════════════════════════════════════════
@@ -2142,6 +2210,7 @@ function pararStream() {
 function cerrarCamara() {
   pararStream();
   ocultarPreview();
+  document.getElementById('cam-controls').style.display = 'flex';
   document.getElementById('cam-overlay').style.display = 'none';
 }
 
@@ -2207,9 +2276,10 @@ function tomarFoto() {
   canvas.height = video.videoHeight || 720;
   canvas.getContext('2d').drawImage(video, 0, 0);
   camFotoTemp = canvas.toDataURL('image/jpeg', 0.88);
-  // Mostrar preview
+  // Mostrar preview y ocultar controles para no seguir tomando fotos
   document.getElementById('cam-preview-img').src = camFotoTemp;
   document.getElementById('cam-preview').style.display = 'flex';
+  document.getElementById('cam-controls').style.display = 'none';
 }
 
 function confirmarFoto() {
@@ -2225,6 +2295,7 @@ function confirmarFoto() {
 function descartarFoto() {
   camFotoTemp = null;
   ocultarPreview();
+  document.getElementById('cam-controls').style.display = 'flex';
   // Reactivar stream para retomar
   iniciarStream();
 }
