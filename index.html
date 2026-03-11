@@ -2360,7 +2360,8 @@ function exportarPDF() {
   var total = G.st.p + G.st.c + G.st.l + G.st.n;
 
   // ── PÁGINA 1: tabla resumen ──────────────────────────────────────────────
-  var rows1 = G.hist.slice(0,100).map(function(h,i){
+  var histOrdenado = G.hist.slice(0,100).reverse(); // más antiguo primero = #1 del día
+  var rows1 = histOrdenado.map(function(h,i){
     var ico = h.col==='verde'?'✅':h.col==='amarillo'?'🟡':h.col==='rojo'?'🔴':'⚫';
     var bg  = h.col==='verde'?'#f0fff8':h.col==='amarillo'?'#fffde7':h.col==='rojo'?'#fff0f3':'#fafafa';
     return '<tr style="border-bottom:1px solid #eee;background:'+bg+';font-size:12px">'
@@ -2374,7 +2375,7 @@ function exportarPDF() {
   }).join('');
 
   // ── PÁGINA 2: tarjetas con notas ────────────────────────────────────────
-  var rows2 = G.hist.slice(0,100).map(function(h,i){
+  var rows2 = histOrdenado.map(function(h,i){
     var ico = h.col==='verde'?'✅':h.col==='amarillo'?'🟡':h.col==='rojo'?'🔴':'⚫';
     var cb  = h.col==='verde'?'#00cc66':h.col==='amarillo'?'#cc9900':h.col==='rojo'?'#cc0022':'#999';
     var bgC = h.col==='verde'?'#f0fff8':h.col==='amarillo'?'#fffde7':h.col==='rojo'?'#fff0f3':'#fafafa';
