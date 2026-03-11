@@ -311,18 +311,29 @@ input.w{border-color:var(--o);background:var(--odim)}
 </div>
 <!-- CAMERA OVERLAY — se abre dentro de la app, sin salir nunca -->
 <div id="cam-overlay" style="display:none;position:fixed;inset:0;background:#000;z-index:500;flex-direction:column">
-  <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#111">
+  <!-- Header -->
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#111;flex-shrink:0">
     <div id="cam-slot-lbl" style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1.1rem;color:#fff;letter-spacing:1px"></div>
     <button onclick="cerrarCamara()" style="background:none;border:none;color:#aaa;font-size:1.6rem;cursor:pointer;line-height:1">✕</button>
   </div>
-  <div style="flex:1;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#000">
+  <!-- Viewfinder -->
+  <div id="cam-viewfinder" style="flex:1;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#000">
     <video id="cam-video" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover"></video>
     <canvas id="cam-canvas" style="display:none"></canvas>
+    <!-- Preview overlay — se muestra después de tomar la foto -->
+    <div id="cam-preview" style="display:none;position:absolute;inset:0;background:#000;flex-direction:column">
+      <img id="cam-preview-img" style="flex:1;width:100%;height:100%;object-fit:contain">
+      <div style="display:flex;gap:10px;padding:12px 16px;background:#111;flex-shrink:0">
+        <button onclick="descartarFoto()" style="flex:1;padding:12px;background:#333;border:1px solid #555;color:#fff;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1rem;letter-spacing:1px;cursor:pointer">✕ RETOMAR</button>
+        <button onclick="confirmarFoto()" style="flex:1;padding:12px;background:#00ff87;border:none;color:#000;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1rem;letter-spacing:1px;cursor:pointer">✓ USAR</button>
+      </div>
+    </div>
   </div>
-  <div style="padding:16px 20px 28px;background:#111;display:flex;align-items:center;justify-content:center;gap:16px">
-    <button onclick="voltearCamara()" style="background:#222;border:1px solid #333;color:#ccc;border-radius:50%;width:44px;height:44px;font-size:1.2rem;cursor:pointer">🔄</button>
+  <!-- Controls -->
+  <div style="padding:16px 20px 28px;background:#111;display:flex;align-items:center;justify-content:center;gap:20px;flex-shrink:0">
+    <button id="cam-flash-btn" onclick="toggleFlash()" style="background:#222;border:1px solid #333;color:#ccc;border-radius:50%;width:44px;height:44px;font-size:1.3rem;cursor:pointer" title="Flash">⚡</button>
     <button onclick="tomarFoto()" style="background:#fff;border:none;border-radius:50%;width:68px;height:68px;font-size:2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 4px #333">📷</button>
-    <div style="width:44px"></div>
+    <button onclick="voltearCamara()" style="background:#222;border:1px solid #333;color:#ccc;border-radius:50%;width:44px;height:44px;font-size:1.2rem;cursor:pointer">🔄</button>
   </div>
 </div>
 
@@ -357,7 +368,7 @@ const CAUSAS = {
 };
 
 // Marcas que NUNCA van a proveedor (solo carpa o lote)
-const NOPROV = ['telcel','iphone','marcas propias','fancy','hkpro','azteca'];
+const NOPROV = ['telcel','iphone','marcas propias','azteca']; // HKPRO y Fancy SÍ pueden ir a Proveedor si no funcionan
 // Marcas de taller externo para causas CF
 const TALLER = ['lg','samsung','panasonic','koblenz','whirlpool','mabe','daewoo'];
 // SKUs bloqueados
@@ -1368,9 +1379,11 @@ function calcClasif(cat, resp, causaInfo, esMarcaNoProv) {
   //   - sin daño físico (sinRoto)
   //   - MÁS: no funcionar por falla de origen ES válido para Proveedor
   //           (el PDF dice "producto con defecto de fabricación o falla de origen")
+  // Línea Blanca: caja NO es requisito para Proveedor (lavadoras, estufas, refris, etc.)
+  const esLB = ['lavadora','refrigerador','estufa','microondas','lbExtra','despachador','boiler'].includes(cat);
   if (!noProvForzado && !imeiFalla) {
-    const provFail = provQs.filter(p=>no(p.k));
-    const provPend = provQs.filter(p=>pen(p.k));
+    const provFail = provQs.filter(p=>no(p.k) && !(esLB && p.k==='caja'));
+    const provPend = provQs.filter(p=>pen(p.k) && !(esLB && p.k==='caja'));
 
     // Descalificadores absolutos de Proveedor (además de los LOTE D ya detectados)
     // Bloqueo de cuenta = no puede ir a Proveedor
@@ -1563,7 +1576,9 @@ function iniciar() {
   // SKU bloqueado
   if (G.sku && skuBloq(G.sku)) {
     G.st.n++; updStats(); addHist('bloq',G.causa,G.marca,G.sku,'🚫 SKU NO REVISABLE');
-    qr('🚫','NO REVISABLE',`SKU ${G.sku} · ${G.marca}`,`SKU ${G.sku} no se diagnostica en DS. No genera etiqueta.`,'qr-no'); return;
+    showRes('rojo','🚫 SKU NO REVISABLE',G.marca,G.causa,G.causaInfo?.d||'',G.sku,
+      `SKU ${G.sku} no se diagnostica en DS. No genera etiqueta. Toma fotos y entrega a operación.`);
+    return;
   }
   // Producto no revisable
   if (noRev) {
@@ -1575,12 +1590,14 @@ function iniciar() {
     G.st.n++; updStats(); addHist('bloq',G.causa,G.marca,G.sku,'🚫 NO PROCESA');
     qr('🚫','NO PROCESA · Causa '+G.causa,G.causaInfo.d,'No genera etiqueta. Entregar sin clasificar a operación DS.','qr-no'); return;
   }
-  // CF taller externo
+  // CF taller externo — muestra resultado con fotos habilitadas
   if (G.causaInfo?.cf) {
     const esTaller = TALLER.some(t=>ml.includes(t));
     if (esTaller) {
       G.st.n++; updStats(); addHist('bloq',G.causa,G.marca,G.sku,'🔧 TALLER PROV');
-      qr('🔧','DIRECTO TALLER PROVEEDOR',`Causa ${G.causa} · ${G.marca}`,`<b>${G.marca}</b> va directo al proveedor. Aplica: LG · Samsung · Panasonic · Koblenz · Whirlpool · Mabe · Daewoo`,'qr-ext'); return;
+      showRes('amarillo','🔧 TALLER PROV',G.marca,G.causa,G.causaInfo.d,G.sku,
+        `<b>${G.marca}</b> va directo al taller del proveedor.<br>No genera etiqueta DS — toma fotos y entrega a operación.`);
+      return;
     }
   }
   // LOTE DIRECTO
@@ -2092,6 +2109,7 @@ async function abrirCamara(idx) {
   camSlotIdx = idx;
   document.getElementById('cam-slot-lbl').textContent =
     `Foto ${idx+1} · ${FOTO_SLOTS[idx].lbl}`;
+  ocultarPreview();
   document.getElementById('cam-overlay').style.display = 'flex';
   await iniciarStream();
 }
@@ -2103,7 +2121,10 @@ async function iniciarStream() {
       video: { facingMode: camFacing, width:{ideal:1920}, height:{ideal:1080} },
       audio: false
     });
-    document.getElementById('cam-video').srcObject = camStream;
+    const video = document.getElementById('cam-video');
+    video.srcObject = camStream;
+    // Intentar activar flash si estaba encendido
+    if (camFlash) aplicarFlash(true);
   } catch(e) {
     alert('No se pudo acceder a la cámara: ' + e.message);
     cerrarCamara();
@@ -2111,35 +2132,107 @@ async function iniciarStream() {
 }
 
 function pararStream() {
-  if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+  if (camStream) {
+    aplicarFlash(false); // apagar torch antes de parar
+    camStream.getTracks().forEach(t => t.stop());
+    camStream = null;
+  }
 }
 
 function cerrarCamara() {
   pararStream();
+  ocultarPreview();
   document.getElementById('cam-overlay').style.display = 'none';
 }
 
 function voltearCamara() {
   camFacing = camFacing === 'environment' ? 'user' : 'environment';
+  camFlash  = false; // frontal no tiene flash
+  actualizarBtnFlash();
   iniciarStream();
 }
 
-// ── Tomar foto (captura frame del video) ─────────────────────────────────
+// ── Flash / Torch ─────────────────────────────────────────────────────────
+let camFlash = false;
+
+async function toggleFlash() {
+  if (!camStream) return;
+  const track = camStream.getVideoTracks()[0];
+  if (!track) return;
+  const caps = track.getCapabilities ? track.getCapabilities() : {};
+  if (!caps.torch) {
+    // Sin soporte nativo — simular con pantalla blanca
+    camFlash = !camFlash;
+    const overlay = document.getElementById('cam-viewfinder');
+    if (camFlash) {
+      if (!document.getElementById('flash-screen')) {
+        const d = document.createElement('div');
+        d.id = 'flash-screen';
+        d.style.cssText = 'position:absolute;inset:0;background:#fff;opacity:0.6;pointer-events:none;z-index:2';
+        overlay.appendChild(d);
+      }
+    } else {
+      document.getElementById('flash-screen')?.remove();
+    }
+    actualizarBtnFlash();
+    return;
+  }
+  camFlash = !camFlash;
+  await aplicarFlash(camFlash);
+  actualizarBtnFlash();
+}
+
+async function aplicarFlash(on) {
+  if (!camStream) return;
+  const track = camStream.getVideoTracks()[0];
+  if (!track) return;
+  try { await track.applyConstraints({ advanced: [{ torch: on }] }); } catch(e) {}
+}
+
+function actualizarBtnFlash() {
+  const btn = document.getElementById('cam-flash-btn');
+  if (!btn) return;
+  btn.style.background  = camFlash ? '#ffcc00' : '#222';
+  btn.style.borderColor = camFlash ? '#ffcc00' : '#333';
+  btn.style.color       = camFlash ? '#000'    : '#ccc';
+}
+
+// ── Tomar foto → mostrar preview ──────────────────────────────────────────
+let camFotoTemp = null; // foto pendiente de confirmar
+
 function tomarFoto() {
   const video   = document.getElementById('cam-video');
   const canvas  = document.getElementById('cam-canvas');
   canvas.width  = video.videoWidth  || 1280;
   canvas.height = video.videoHeight || 720;
   canvas.getContext('2d').drawImage(video, 0, 0);
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
-  G_fotos[camSlotIdx] = dataUrl;
+  camFotoTemp = canvas.toDataURL('image/jpeg', 0.88);
+  // Mostrar preview
+  document.getElementById('cam-preview-img').src = camFotoTemp;
+  document.getElementById('cam-preview').style.display = 'flex';
+}
+
+function confirmarFoto() {
+  G_fotos[camSlotIdx] = camFotoTemp;
+  camFotoTemp = null;
   cerrarCamara();
   renderFotoSlots();
   // Auto-avanzar al siguiente slot vacío
-  const siguiente = G_fotos.findIndex((f, i) => i > camSlotIdx && !f);
-  if (siguiente !== -1) {
-    setTimeout(() => abrirCamara(siguiente), 300);
-  }
+  const sig = G_fotos.findIndex((f, i) => i > camSlotIdx && !f);
+  if (sig !== -1) setTimeout(() => abrirCamara(sig), 300);
+}
+
+function descartarFoto() {
+  camFotoTemp = null;
+  ocultarPreview();
+  // Reactivar stream para retomar
+  iniciarStream();
+}
+
+function ocultarPreview() {
+  const prev = document.getElementById('cam-preview');
+  if (prev) prev.style.display = 'none';
+  camFotoTemp = null;
 }
 
 function borrarFoto(idx, e) {
