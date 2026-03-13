@@ -268,6 +268,7 @@ input.w{border-color:var(--o);background:var(--odim)}
     <div class="hhtit">📋 Historial sesión <span id="hist-count" style="color:var(--sub2)"></span></div>
     <div style="display:flex;gap:6px">
       <button class="hhclr" style="color:var(--blue);margin-right:2px" onclick="mostrarExport()">↑ Exportar</button>
+      <button class="hhclr" style="color:var(--o)" onclick="abrirCamaraExtra()">📷 Foto</button>
       <button class="hhclr" onclick="confirmarBorrar()">Borrar</button>
     </div>
   </div>
@@ -362,6 +363,59 @@ input.w{border-color:var(--o);background:var(--odim)}
 <div class="lightbox" id="lightbox" style="display:none" onclick="cerrarLightbox()">
   <img id="lightbox-img" src="" alt="foto">
   <button class="lightbox-close" onclick="cerrarLightbox()">✕</button>
+</div>
+
+<!-- MODAL CONFIRMAR BORRAR -->
+<div id="modal-borrar" style="display:none;position:fixed;inset:0;background:#000c;z-index:600;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--s1);border:2px solid var(--r);border-radius:14px;width:100%;max-width:340px;padding:22px 18px">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1.3rem;color:var(--r);margin-bottom:8px">⚠️ BORRAR HISTORIAL</div>
+    <div style="font-size:.83rem;color:#ccc;line-height:1.5;margin-bottom:18px">Tienes <b id="modal-borrar-total" style="color:var(--y)">0</b> piezas registradas.<br>¿Qué quieres hacer?</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button onclick="borrarConPDF()" style="padding:12px;background:#1a6bff;color:#fff;border:none;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1rem;letter-spacing:1px;cursor:pointer">📄 EXPORTAR PDF Y LUEGO BORRAR</button>
+      <button onclick="borrarSinPDF()" style="padding:12px;background:var(--r);color:#fff;border:none;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1rem;letter-spacing:1px;cursor:pointer">🗑️ BORRAR SIN EXPORTAR</button>
+      <button onclick="cancelarBorrar()" style="padding:11px;background:var(--s3);color:var(--sub);border:1px solid var(--border2);border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:.95rem;cursor:pointer">← CANCELAR (no borrar)</button>
+    </div>
+  </div>
+</div>
+
+<!-- CÁMARA EXTRA — fotos libres con nombre personalizado -->
+<div id="cam-extra-overlay" style="display:none;position:fixed;inset:0;background:#000;z-index:500;flex-direction:column;overflow:hidden">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#111;flex-shrink:0">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1rem;color:#fff;letter-spacing:1px">📷 FOTO EXTRA</div>
+    <button onclick="cerrarCamaraExtra()" style="background:none;border:none;color:#aaa;font-size:1.6rem;cursor:pointer;line-height:1">✕</button>
+  </div>
+  <!-- Nombre de la foto -->
+  <div style="background:#111;padding:8px 14px;display:flex;gap:8px;align-items:center;flex-shrink:0;border-bottom:1px solid #222">
+    <div style="flex:1">
+      <div style="font-size:.55rem;color:var(--sub);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Nombre · marca · número (se usa para el archivo)</div>
+      <input id="extra-nombre" type="text" placeholder="ej: etiqueta_lavadora_whirlpool_001"
+        style="width:100%;background:#1a1a1a;border:1.5px solid #333;color:#fff;padding:8px 10px;border-radius:7px;font-family:'JetBrains Mono',monospace;font-size:.82rem;outline:none"
+        onfocus="this.style.borderColor='var(--g)'" onblur="this.style.borderColor='#333'">
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+      <button onclick="setExtraNombre('etiqueta')" title="Etiqueta" style="padding:5px 9px;background:#1a1a1a;border:1px solid #333;color:var(--y);border-radius:5px;font-size:.7rem;cursor:pointer">🏷️</button>
+      <button onclick="setExtraNombre('daño')" title="Daño" style="padding:5px 9px;background:#1a1a1a;border:1px solid #333;color:var(--r);border-radius:5px;font-size:.7rem;cursor:pointer">🔍</button>
+      <button onclick="setExtraNombre('accesorio')" title="Accesorio" style="padding:5px 9px;background:#1a1a1a;border:1px solid #333;color:var(--g);border-radius:5px;font-size:.7rem;cursor:pointer">🎁</button>
+    </div>
+  </div>
+  <!-- Viewfinder -->
+  <div id="cam-extra-vf" style="flex:1;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#000">
+    <video id="cam-extra-video" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover"></video>
+    <canvas id="cam-extra-canvas" style="display:none"></canvas>
+    <div id="cam-extra-preview" style="display:none;position:absolute;inset:0;background:#000;flex-direction:column;z-index:10">
+      <img id="cam-extra-preview-img" style="flex:1;width:100%;min-height:0;object-fit:contain;display:block">
+      <div style="display:flex;gap:10px;padding:14px 16px 24px;background:#111;flex-shrink:0">
+        <button onclick="descartarExtraFoto()" style="flex:1;padding:14px 8px;background:#333;border:1px solid #555;color:#fff;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1.05rem;letter-spacing:1px;cursor:pointer">✕ RETOMAR</button>
+        <button onclick="confirmarExtraFoto()" style="flex:1;padding:14px 8px;background:var(--g);border:none;color:#000;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1.05rem;letter-spacing:1px;cursor:pointer">⬇ GUARDAR</button>
+      </div>
+    </div>
+  </div>
+  <div id="cam-extra-ctrl" style="padding:14px 20px 24px;background:#111;display:flex;align-items:center;justify-content:center;gap:20px;flex-shrink:0">
+    <button id="cam-extra-flash-btn" onclick="toggleExtraFlash()" style="background:#222;border:1px solid #333;color:#ccc;border-radius:50%;width:44px;height:44px;font-size:1.3rem;cursor:pointer">⚡</button>
+    <button onclick="tomarExtraFoto()" style="background:#fff;border:none;border-radius:50%;width:68px;height:68px;font-size:2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 4px #333">📷</button>
+    <button onclick="voltearExtraCamara()" style="background:#222;border:1px solid #333;color:#ccc;border-radius:50%;width:44px;height:44px;font-size:1.2rem;cursor:pointer">🔄</button>
+  </div>
+  <div id="cam-extra-counter" style="background:#111;padding:2px 14px 10px;text-align:center;font-size:.62rem;color:var(--sub);flex-shrink:0">Listo para tomar fotos</div>
 </div>
 
 <script>
@@ -1694,13 +1748,24 @@ document.addEventListener('keydown',e=>{
 });
 
 function confirmarBorrar() {
-  // Primero exportar por seguridad
   const total=G.st.p+G.st.c+G.st.l+G.st.n;
-  if (total>0) {
-    const ok=confirm(`⚠️ Hay ${total} piezas registradas.\n\n¿Exportar a PDF antes de borrar?\n\nOK = Exportar y luego borrar\nCancelar = Solo borrar`);
-    if (ok) { exportarPDF(); }
-  }
-  setTimeout(()=>clrH(),ok?2000:0);
+  if (total===0) { clrH(); return; }
+  // Mostrar modal propio — nunca usa confirm() para evitar bloqueos en móvil
+  document.getElementById('modal-borrar-total').textContent=total;
+  document.getElementById('modal-borrar').style.display='flex';
+}
+function borrarConPDF() {
+  document.getElementById('modal-borrar').style.display='none';
+  exportarPDF();
+  // Esperar 1.5s para que abra la ventana del PDF, luego borrar
+  setTimeout(()=>clrH(), 1500);
+}
+function borrarSinPDF() {
+  document.getElementById('modal-borrar').style.display='none';
+  clrH();
+}
+function cancelarBorrar() {
+  document.getElementById('modal-borrar').style.display='none';
 }
 
 function clrH(){
@@ -2094,6 +2159,172 @@ document.getElementById('reloj').textContent=new Date().toLocaleTimeString('es-M
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&G.causa&&G.marca)iniciar();});
 
 cargarEstado();
+
+// ══════════════════════════════════════════════════
+// CÁMARA EXTRA — fotos libres con nombre personalizado
+// Descarga directo a Descargas con nombre: descripcion_marca_sku_NNN.jpg
+// ══════════════════════════════════════════════════
+let extraStream    = null;
+let extraFacing    = 'environment';
+let extraFlash     = false;
+let extraFotoTemp  = null;
+let extraContador  = 0; // fotos tomadas en esta sesión extra
+
+async function abrirCamaraExtra() {
+  // Pre-rellenar nombre con marca+SKU actuales si existen
+  const marca = (G.marca||'').toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+  const sku   = G.sku||'';
+  const base  = [marca, sku].filter(Boolean).join('_');
+  document.getElementById('extra-nombre').value = base ? base+'_' : '';
+  document.getElementById('cam-extra-preview').style.display='none';
+  document.getElementById('cam-extra-ctrl').style.display='flex';
+  actualizarContadorExtra();
+  document.getElementById('cam-extra-overlay').style.display='flex';
+  await iniciarExtraStream();
+}
+
+async function iniciarExtraStream() {
+  pararExtraStream();
+  try {
+    extraStream = await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:extraFacing, width:{ideal:3840}, height:{ideal:2160}, frameRate:{ideal:30}},
+      audio:false
+    });
+    document.getElementById('cam-extra-video').srcObject = extraStream;
+    if (extraFlash) aplicarExtraFlash(true);
+  } catch(e) {
+    try {
+      extraStream = await navigator.mediaDevices.getUserMedia({
+        video:{facingMode:extraFacing, width:{ideal:1920}, height:{ideal:1080}},
+        audio:false
+      });
+      document.getElementById('cam-extra-video').srcObject = extraStream;
+    } catch(e2) {
+      alert('No se pudo acceder a la cámara: '+e2.message);
+      cerrarCamaraExtra();
+    }
+  }
+}
+
+function pararExtraStream() {
+  if (extraStream) {
+    aplicarExtraFlash(false);
+    extraStream.getTracks().forEach(t=>t.stop());
+    extraStream = null;
+  }
+}
+
+function cerrarCamaraExtra() {
+  pararExtraStream();
+  document.getElementById('cam-extra-preview').style.display='none';
+  document.getElementById('cam-extra-overlay').style.display='none';
+  extraContador = 0;
+}
+
+function voltearExtraCamara() {
+  extraFacing = extraFacing==='environment'?'user':'environment';
+  extraFlash = false; actualizarBtnExtraFlash();
+  iniciarExtraStream();
+}
+
+async function toggleExtraFlash() {
+  if (!extraStream) return;
+  const track = extraStream.getVideoTracks()[0];
+  const caps  = track?.getCapabilities?.()||{};
+  if (!caps.torch) {
+    extraFlash = !extraFlash;
+    const vf = document.getElementById('cam-extra-vf');
+    if (extraFlash) {
+      if (!document.getElementById('flash-extra-screen')) {
+        const d=document.createElement('div');
+        d.id='flash-extra-screen';
+        d.style.cssText='position:absolute;inset:0;background:#fff;opacity:0.6;pointer-events:none;z-index:2';
+        vf.appendChild(d);
+      }
+    } else { document.getElementById('flash-extra-screen')?.remove(); }
+    actualizarBtnExtraFlash(); return;
+  }
+  extraFlash = !extraFlash;
+  await aplicarExtraFlash(extraFlash); actualizarBtnExtraFlash();
+}
+
+async function aplicarExtraFlash(on) {
+  if (!extraStream) return;
+  const track = extraStream.getVideoTracks()[0];
+  if (!track) return;
+  try { await track.applyConstraints({advanced:[{torch:on}]}); } catch(e){}
+}
+
+function actualizarBtnExtraFlash() {
+  const btn = document.getElementById('cam-extra-flash-btn');
+  if (!btn) return;
+  btn.style.background  = extraFlash?'#ffcc00':'#222';
+  btn.style.borderColor = extraFlash?'#ffcc00':'#333';
+  btn.style.color       = extraFlash?'#000':'#ccc';
+}
+
+function tomarExtraFoto() {
+  const video  = document.getElementById('cam-extra-video');
+  const canvas = document.getElementById('cam-extra-canvas');
+  const track  = extraStream?.getVideoTracks()[0];
+  const settings = track?.getSettings()||{};
+  canvas.width  = settings.width  || video.videoWidth  || 1920;
+  canvas.height = settings.height || video.videoHeight || 1080;
+  canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
+  extraFotoTemp = canvas.toDataURL('image/jpeg', 0.95);
+  document.getElementById('cam-extra-preview-img').src = extraFotoTemp;
+  document.getElementById('cam-extra-preview').style.display = 'flex';
+  document.getElementById('cam-extra-ctrl').style.display = 'none';
+}
+
+function descartarExtraFoto() {
+  extraFotoTemp = null;
+  document.getElementById('cam-extra-preview').style.display = 'none';
+  document.getElementById('cam-extra-ctrl').style.display = 'flex';
+  iniciarExtraStream();
+}
+
+function confirmarExtraFoto() {
+  if (!extraFotoTemp) return;
+  // Construir nombre de archivo
+  const nombreRaw = (document.getElementById('extra-nombre').value||'foto').trim();
+  // Limpiar caracteres inválidos, reemplazar espacios por _
+  const nombreLimpio = nombreRaw.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_\-áéíóúÁÉÍÓÚñÑ]/g,'').toLowerCase()||'foto';
+  // Número secuencial de 3 dígitos dentro de esta sesión extra
+  extraContador++;
+  const num = String(extraContador).padStart(3,'0');
+  const filename = `${nombreLimpio}_${num}.jpg`;
+  // Descargar directamente
+  const a = document.createElement('a');
+  a.href = extraFotoTemp;
+  a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  // Feedback y volver a cámara para tomar más
+  extraFotoTemp = null;
+  document.getElementById('cam-extra-preview').style.display = 'none';
+  document.getElementById('cam-extra-ctrl').style.display = 'flex';
+  actualizarContadorExtra();
+  iniciarExtraStream();
+}
+
+function setExtraNombre(tipo) {
+  const inp = document.getElementById('extra-nombre');
+  const marca = (G.marca||'prod').toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+  const sku   = G.sku||'';
+  const partes = [tipo, marca, sku].filter(Boolean);
+  inp.value = partes.join('_')+'_';
+  inp.focus();
+  // Mover cursor al final
+  inp.setSelectionRange(inp.value.length, inp.value.length);
+}
+
+function actualizarContadorExtra() {
+  const el = document.getElementById('cam-extra-counter');
+  if (!el) return;
+  el.textContent = extraContador > 0
+    ? `✓ ${extraContador} foto${extraContador>1?'s':''} guardada${extraContador>1?'s':''} en esta sesión`
+    : 'Listo para tomar fotos — se descargan a tu galería';
+}
 </script>
 </body>
 </html>
