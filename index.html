@@ -2,7 +2,10 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>DS Clasificador · Baz Elektra</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap');
@@ -16,8 +19,10 @@
   --blue:#3d9eff;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html{font-size:15px}
-body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;padding:14px;max-width:480px;margin:0 auto;min-height:100vh}
+html{font-size:15px;height:100%}
+/* Fix parpadeo teclado virtual: evitar reflow del viewport */
+html, body { overscroll-behavior:none; }
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;padding:14px;max-width:480px;margin:0 auto;min-height:100vh;min-height:100dvh}
 
 .hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px}
 .logo{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:2rem;letter-spacing:1px;line-height:1;color:var(--g)}
@@ -416,6 +421,37 @@ input.w{border-color:var(--o);background:var(--odim)}
     <button onclick="voltearExtraCamara()" style="background:#222;border:1px solid #333;color:#ccc;border-radius:50%;width:44px;height:44px;font-size:1.2rem;cursor:pointer">🔄</button>
   </div>
   <div id="cam-extra-counter" style="background:#111;padding:2px 14px 10px;text-align:center;font-size:.62rem;color:var(--sub);flex-shrink:0">Listo para tomar fotos</div>
+</div>
+
+<!-- MODAL RECLASIFICAR -->
+<div id="modal-reclas" style="display:none;position:fixed;inset:0;background:#000c;z-index:600;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--s1);border:2px solid var(--y);border-radius:14px;width:100%;max-width:340px;padding:20px 16px">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1.2rem;color:var(--y);margin-bottom:4px">✏️ RECLASIFICAR</div>
+    <div id="reclas-info" style="font-size:.78rem;color:var(--sub);margin-bottom:14px"></div>
+    <div style="display:flex;flex-direction:column;gap:7px" id="reclas-btns"></div>
+    <button onclick="cerrarReclasificar()" style="margin-top:10px;width:100%;padding:10px;background:var(--s3);color:var(--sub);border:1px solid var(--border2);border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:.9rem;cursor:pointer">← CANCELAR</button>
+  </div>
+</div>
+
+<!-- OVERLAY RETOMAR FOTOS DE HISTORIAL -->
+<div id="overlay-retomar" style="display:none;position:fixed;inset:0;background:#000c;z-index:300;flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px;animation:fi .15s ease">
+  <div style="background:var(--s1);border-radius:14px;width:100%;max-width:440px;margin:0 auto;border:2px solid #0099cc">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1.15rem;color:#0099cc;letter-spacing:1px">📷 RETOMAR FOTOS</div>
+        <div id="retomar-marca" style="font-size:.72rem;color:var(--sub);margin-top:2px"></div>
+      </div>
+      <button onclick="cerrarRetomarFotos()" style="background:none;border:none;color:var(--sub);font-size:1.5rem;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:14px 14px 6px">
+      <div class="fotos-grid" id="retomar-grid"></div>
+      <div class="foto-counter" id="retomar-counter" style="margin-top:6px;margin-bottom:10px">0 / 6 fotos</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding-bottom:16px">
+        <button onclick="guardarFotosRetomar()" style="padding:12px;background:var(--g);color:#000;border:none;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:.95rem;letter-spacing:1px;cursor:pointer">✓ GUARDAR Y CERRAR</button>
+        <button onclick="cerrarRetomarFotos()" style="padding:12px;background:var(--s3);color:var(--sub);border:1px solid var(--border2);border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:.9rem;cursor:pointer">← CANCELAR</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -1585,6 +1621,9 @@ function qr(ico, titulo, sub1, sub2, cls) {
 }
 
 function showRes(color, etiq, marca, causa, desc, sku, razon) {
+  // Fix: limpiar fotos SIEMPRE antes de mostrar resultado nuevo
+  limpiarFotos();
+  pararStream();
   const card=document.getElementById('rcard');
   card.className='res-card '+color;
   document.getElementById('rc-etiq').textContent=etiq;
@@ -1597,11 +1636,15 @@ function showRes(color, etiq, marca, causa, desc, sku, razon) {
   const notaEl=document.getElementById('rc-nota');
   if (notaEl) notaEl.value='';
   document.getElementById('rov').style.display='flex';
-  limpiarFotos();
   renderFotoSlots();
 }
 
-function cerrarRes() { document.getElementById('rov').style.display='none'; }
+function cerrarRes() {
+  document.getElementById('rov').style.display='none';
+  // Fix: limpiar fotos al cerrar sin dar Siguiente, para que no se peguen a la próxima pieza
+  limpiarFotos();
+  pararStream(); // liberar cámara si quedó abierta
+}
 
 async function siguiente() {
   const nota=(document.getElementById('rc-nota')?.value||'').trim();
@@ -1678,8 +1721,8 @@ function renderHist() {
   if (countEl) countEl.textContent=`(${total})`;
   hl.innerHTML=G.hist.slice(0,MAX_PIEZAS).map((h,i)=>{
     const ico=h.col==='verde'?'✅':h.col==='amarillo'?'🟡':h.col==='rojo'?'🔴':'⚫';
-    const nFotos = (h.fotos||[]).filter(Boolean).length;
-    return `<div class="hi-card ${h.col}">
+    const nFotos=(h.fotos||[]).filter(Boolean).length;
+    return `<div class="hi-card ${h.col}" id="hicard-${i}">
       <div class="hi-row" onclick="toggleHist(${i})">
         <span class="hb">${h.causa}</span>
         ${h.sku?`<span class="hsku">#${h.sku}</span>`:''}
@@ -1690,18 +1733,22 @@ function renderHist() {
         <span class="hexp-icon" id="hexp-${i}">▾</span>
       </div>
       <div class="hi-detail" id="hdet-${i}">
+        <!-- Acciones rápidas -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px;margin-bottom:10px">
+          <button onclick="abrirReclasificar(${i})" style="padding:8px 6px;background:var(--ydim);border:1px solid var(--y);color:var(--y);border-radius:7px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:.82rem;letter-spacing:.5px;cursor:pointer">✏️ RECLASIFICAR</button>
+          <button onclick="retomarFotosHist(${i})" style="padding:8px 6px;background:#00c8ff1a;border:1px solid #0099cc;color:#0099cc;border-radius:7px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:.82rem;letter-spacing:.5px;cursor:pointer">📷 RETOMAR FOTOS</button>
+        </div>
         <!-- Nota editable inline -->
-        <label style="font-size:.58rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--sub);display:block;margin-top:8px;margin-bottom:3px">📝 Nota / Justificación</label>
+        <label style="font-size:.58rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--sub);display:block;margin-bottom:3px">📝 Nota / Justificación</label>
         <textarea class="hi-nota-area" id="hn-${i}" placeholder="Agrega una nota o justificación…">${h.nota||''}</textarea>
         <button class="hi-nota-save" onclick="guardarNota(${i})">💾 Guardar nota</button>
         ${nFotos>0?`
-        <!-- Fotos del artículo -->
         <div style="margin-top:10px">
           <div style="font-size:.58rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--blue);margin-bottom:6px">📸 Fotos guardadas</div>
-          <div class="hi-fotos-strip">${(h.fotos||[]).filter(Boolean).map((f,fi)=>
-            `<img class="hi-thumb" src="${f}" onclick="abrirLightbox('${h.fotos.indexOf(f)===fi?f:f}')">`
+          <div class="hi-fotos-strip">${(h.fotos||[]).filter(Boolean).map(f=>
+            `<img class="hi-thumb" src="${f}" onclick="abrirLightbox('${f.replace(/'/g,"\\'")}')">`
           ).join('')}</div>
-        </div>`:'<div class="hi-no-fotos">Sin fotos guardadas para esta pieza</div>'}
+        </div>`:`<div class="hi-no-fotos" style="margin-top:8px">Sin fotos — usa "Retomar fotos" para agregar</div>`}
       </div>
     </div>`;
   }).join('');
@@ -2159,6 +2206,185 @@ document.getElementById('reloj').textContent=new Date().toLocaleTimeString('es-M
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&G.causa&&G.marca)iniciar();});
 
 cargarEstado();
+
+// ══════════════════════════════════════════════════
+// RECLASIFICAR DESDE HISTORIAL
+// ══════════════════════════════════════════════════
+let reclasIdx = -1;
+
+const OPCIONES_RECLAS = [
+  {col:'verde',  etiq:'✅ PROVEEDOR',  bg:'var(--gdim)',  border:'var(--g)',  color:'var(--g)'},
+  {col:'amarillo',etiq:'CARPA A',      bg:'var(--ydim)',  border:'var(--y)',  color:'var(--y)'},
+  {col:'amarillo',etiq:'CARPA B',      bg:'var(--ydim)',  border:'var(--y)',  color:'var(--y)'},
+  {col:'rojo',   etiq:'LOTE C',        bg:'var(--rdim)',  border:'var(--r)',  color:'var(--r)'},
+  {col:'rojo',   etiq:'LOTE D',        bg:'var(--rdim)',  border:'var(--r)',  color:'var(--r)'},
+];
+
+function abrirReclasificar(i) {
+  reclasIdx = i;
+  const h = G.hist[i];
+  document.getElementById('reclas-info').textContent =
+    `${h.marca||'—'} · Causa ${h.causa} · Clasificación actual: ${h.res}`;
+  const btns = document.getElementById('reclas-btns');
+  btns.innerHTML = OPCIONES_RECLAS.map(o=>
+    `<button onclick="aplicarReclasificacion('${o.col}','${o.etiq}')"
+      style="padding:11px;background:${o.bg};border:1.5px solid ${o.border};color:${o.color};
+             border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-weight:800;
+             font-size:1rem;letter-spacing:1px;cursor:pointer;text-align:left">
+      ${o.etiq}${h.res===o.etiq?' ← actual':''}
+    </button>`
+  ).join('');
+  document.getElementById('modal-reclas').style.display='flex';
+}
+
+function aplicarReclasificacion(nuevoCol, nuevaEtiq) {
+  const i = reclasIdx;
+  if (i < 0 || !G.hist[i]) return;
+  const h = G.hist[i];
+  const colAnterior = h.col;
+
+  // Restar del contador anterior
+  if (colAnterior==='verde') G.st.p = Math.max(0, G.st.p-1);
+  else if (colAnterior==='amarillo') G.st.c = Math.max(0, G.st.c-1);
+  else if (colAnterior==='rojo') G.st.l = Math.max(0, G.st.l-1);
+  else G.st.n = Math.max(0, G.st.n-1);
+
+  // Sumar al nuevo contador
+  if (nuevoCol==='verde') G.st.p++;
+  else if (nuevoCol==='amarillo') G.st.c++;
+  else G.st.l++;
+
+  // Actualizar registro
+  h.col = nuevoCol;
+  h.res = nuevaEtiq;
+
+  cerrarReclasificar();
+  updStats();
+  renderHist();
+  guardarEstado();
+
+  // Mantener el panel expandido de esa pieza
+  setTimeout(()=>{
+    const det=document.getElementById('hdet-'+i);
+    const ico=document.getElementById('hexp-'+i);
+    if(det){ det.classList.add('open'); }
+    if(ico){ ico.classList.add('open'); }
+  }, 80);
+}
+
+function cerrarReclasificar() {
+  document.getElementById('modal-reclas').style.display='none';
+  reclasIdx = -1;
+}
+
+// ══════════════════════════════════════════════════
+// RETOMAR FOTOS DESDE HISTORIAL
+// Abre el módulo de fotos vinculado a una pieza del historial
+// ══════════════════════════════════════════════════
+let retomandoHistIdx = -1;
+
+async function retomarFotosHist(i) {
+  retomandoHistIdx = i;
+  const h = G.hist[i];
+  // Cargar fotos existentes de esa pieza en G_fotos
+  const fotosExist = h.fotos||[];
+  G_fotos = [null,null,null,null,null,null];
+  fotosExist.forEach((f,fi)=>{ if(fi<6) G_fotos[fi]=f||null; });
+
+  // Mostrar panel de fotos en un overlay propio
+  document.getElementById('retomar-marca').textContent = `${h.marca||'—'} · ${h.res}`;
+  renderFotosRetomar();
+  document.getElementById('overlay-retomar').style.display='flex';
+}
+
+function renderFotosRetomar() {
+  const grid = document.getElementById('retomar-grid');
+  if (!grid) return;
+  grid.innerHTML = FOTO_SLOTS.map((s,i)=>{
+    const taken=!!G_fotos[i];
+    return `<div class="foto-slot${taken?' taken':''}" onclick="abrirCamaraRetomar(${i})">
+      ${taken?`<img src="${G_fotos[i]}" alt="foto ${i+1}">`:''}
+      <div class="foto-slot-overlay">
+        <span class="foto-ico">${taken?'📷':s.ico}</span>
+        <span class="foto-lbl">${s.lbl}</span>
+      </div>
+      <span class="foto-check">✓</span>
+      ${taken?`<button class="foto-del" onclick="borrarFotoRetomar(${i},event)">✕</button>`:''}
+    </div>`;
+  }).join('');
+  const count=G_fotos.filter(Boolean).length;
+  const el=document.getElementById('retomar-counter');
+  if(el) el.textContent=count+' / 6 fotos'+(count===6?' ✓ Completo':'');
+}
+
+function borrarFotoRetomar(idx,e){
+  e.stopPropagation(); G_fotos[idx]=null; renderFotosRetomar();
+}
+
+async function abrirCamaraRetomar(idx) {
+  // Reutiliza la cámara principal pero al confirmar guarda en el historial correcto
+  G_retomar_slot = idx;
+  camSlotIdx = idx;
+  document.getElementById('cam-slot-lbl').textContent=`Foto ${idx+1} · ${FOTO_SLOTS[idx].lbl}`;
+  ocultarPreview();
+  document.getElementById('cam-overlay').style.display='flex';
+  await iniciarStream();
+  // Sobreescribir confirmarFoto para este contexto
+  window._modoRetomar = true;
+}
+
+let G_retomar_slot = 0;
+
+// Patch de confirmarFoto para soportar modo retomar
+const _confirmarFotoOriginal = window.confirmarFoto;
+async function confirmarFoto(){
+  G_fotos[camSlotIdx]=camFotoTemp;
+  camFotoTemp=null;
+  cerrarCamara();
+  if (window._modoRetomar) {
+    window._modoRetomar=false;
+    renderFotosRetomar();
+    const sig=G_fotos.findIndex((f,i)=>i>camSlotIdx&&!f);
+    if(sig!==-1) setTimeout(()=>abrirCamaraRetomar(sig),300);
+    return;
+  }
+  renderFotoSlots();
+  if(G.hist.length){
+    G.hist[0].fotos=G_fotos.filter(Boolean);
+    await guardarFotosDB(0, G.hist[0].fotos);
+    renderHist();
+  }
+  const sig=G_fotos.findIndex((f,i)=>i>camSlotIdx&&!f);
+  if(sig!==-1) setTimeout(()=>abrirCamara(sig),300);
+}
+
+async function guardarFotosRetomar() {
+  const i = retomandoHistIdx;
+  if (i < 0) return;
+  const fotosGuardadas = G_fotos.filter(Boolean);
+  G.hist[i].fotos = fotosGuardadas;
+  await guardarFotosDB(i, fotosGuardadas);
+  // Descargar fotos nuevas
+  if (fotosGuardadas.length) await guardarTodasFotos(true);
+  cerrarRetomarFotos();
+  renderHist();
+  guardarEstado();
+  // Reabrir panel de esa pieza
+  setTimeout(()=>{
+    const det=document.getElementById('hdet-'+i);
+    const ico=document.getElementById('hexp-'+i);
+    if(det){ det.classList.add('open'); }
+    if(ico){ ico.classList.add('open'); }
+  }, 80);
+}
+
+function cerrarRetomarFotos() {
+  document.getElementById('overlay-retomar').style.display='none';
+  retomandoHistIdx=-1;
+  window._modoRetomar=false;
+  limpiarFotos();
+}
+
 
 // ══════════════════════════════════════════════════
 // CÁMARA EXTRA — fotos libres con nombre personalizado
