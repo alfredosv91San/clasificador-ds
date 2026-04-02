@@ -242,13 +242,20 @@ input.w{border-color:var(--o);background:var(--odim)}
 <div class="row2b">
   <div>
     <label>SKU <span style="color:var(--sub2);text-transform:none;font-weight:400;letter-spacing:0">(opcional)</span></label>
-    <input id="isku" type="text" inputmode="numeric" placeholder="31060737"
-      autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
-      oninput="onSku()">
+    <div style="display:flex;gap:6px;align-items:center">
+      <input id="isku" type="text" inputmode="numeric" placeholder="31060737"
+        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+        oninput="onSku()" style="flex:1">
+      <button onclick="abrirEscaner()" title="Escanear etiqueta"
+        style="flex-shrink:0;padding:0;width:44px;height:44px;background:var(--s2);border:1.5px solid var(--border2);border-radius:8px;color:var(--blue);font-size:1.3rem;cursor:pointer;display:flex;align-items:center;justify-content:center">📷</button>
+    </div>
     <div id="sku-hint" class="hint"></div>
   </div>
-  <div style="display:flex;flex-direction:column;justify-content:flex-end">
-    <button class="btn" id="mainbtn" onclick="iniciar()" disabled>REVISAR ⚡</button>
+  <div style="display:flex;flex-direction:column;justify-content:flex-end;gap:5px">
+    <button class="btn" id="mainbtn" onclick="iniciar()" disabled style="margin-bottom:0">REVISAR ⚡</button>
+    <button id="directbtn" onclick="abrirClasDirecta()"
+      style="width:100%;padding:9px;background:var(--s3);color:var(--sub);border:1px solid var(--border2);border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:.9rem;letter-spacing:1px;cursor:pointer;transition:all .1s"
+      title="Clasificar sin responder preguntas">DIRECTO ✓</button>
   </div>
 </div>
 <div class="cat-detected" id="cat-box">
@@ -442,6 +449,76 @@ input.w{border-color:var(--o);background:var(--odim)}
         <button onclick="cerrarRetomarFotos()" style="padding:12px;background:var(--s3);color:var(--sub);border:1px solid var(--border2);border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:.9rem;cursor:pointer">← CANCELAR</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ══════ ESCÁNER DE ETIQUETA ══════ -->
+<div id="scan-overlay" style="display:none;position:fixed;inset:0;background:#000;z-index:500;flex-direction:column;overflow:hidden">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#111;flex-shrink:0">
+    <div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1.1rem;color:var(--blue);letter-spacing:1px">📷 ESCANEAR ETIQUETA</div>
+      <div id="scan-status" style="font-size:.62rem;color:var(--sub);margin-top:1px">Apunta al código de barras · escaneo automático</div>
+    </div>
+    <button onclick="cerrarEscaner()" style="background:none;border:none;color:#aaa;font-size:1.6rem;cursor:pointer;line-height:1">✕</button>
+  </div>
+  <div style="flex:1;position:relative;overflow:hidden;background:#000;display:flex;align-items:center;justify-content:center">
+    <video id="scan-video" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover"></video>
+    <canvas id="scan-canvas" style="display:none"></canvas>
+    <!-- Marco de enfoque -->
+    <div style="position:absolute;width:85%;max-width:340px;height:90px;border:2px solid rgba(61,158,255,.5);border-radius:8px;box-shadow:0 0 0 9999px #000a;pointer-events:none">
+      <div style="position:absolute;top:-2px;left:-2px;width:22px;height:22px;border-top:3px solid var(--g);border-left:3px solid var(--g);border-radius:4px 0 0 0"></div>
+      <div style="position:absolute;top:-2px;right:-2px;width:22px;height:22px;border-top:3px solid var(--g);border-right:3px solid var(--g);border-radius:0 4px 0 0"></div>
+      <div style="position:absolute;bottom:-2px;left:-2px;width:22px;height:22px;border-bottom:3px solid var(--g);border-left:3px solid var(--g);border-radius:0 0 0 4px"></div>
+      <div style="position:absolute;bottom:-2px;right:-2px;width:22px;height:22px;border-bottom:3px solid var(--g);border-right:3px solid var(--g);border-radius:0 0 4px 0"></div>
+      <div id="scan-line" style="position:absolute;left:4px;right:4px;height:2px;background:linear-gradient(90deg,transparent,var(--g),transparent);animation:scanline 1.8s ease-in-out infinite;top:50%"></div>
+    </div>
+  </div>
+  <!-- Panel resultado -->
+  <div id="scan-result-box" style="display:none;background:#111;border-top:1px solid var(--border2);padding:12px 14px;flex-shrink:0">
+    <div style="font-size:.58rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--g);margin-bottom:8px">✓ DATOS DETECTADOS</div>
+    <div id="scan-fields" style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <button onclick="aplicarEscaneo()" style="padding:11px;background:var(--g);color:#000;border:none;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:.95rem;cursor:pointer">✓ USAR DATOS</button>
+      <button onclick="resetEscaner()" style="padding:11px;background:var(--s3);color:var(--sub);border:1px solid var(--border2);border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:.85rem;cursor:pointer">↺ RESCANER</button>
+    </div>
+  </div>
+  <div id="scan-controls" style="padding:12px 20px 24px;background:#111;display:flex;align-items:center;justify-content:center;gap:20px;flex-shrink:0">
+    <button onclick="toggleScanFlash()" id="scan-flash-btn" style="background:#222;border:1px solid #333;color:#ccc;border-radius:50%;width:44px;height:44px;font-size:1.3rem;cursor:pointer">⚡</button>
+    <button onclick="capturarManual()" style="background:#fff;border:none;border-radius:50%;width:68px;height:68px;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 4px #333;font-family:'Barlow Condensed',sans-serif;font-weight:900;color:#000;letter-spacing:0">SCAN</button>
+    <button onclick="voltearScan()" style="background:#222;border:1px solid #333;color:#ccc;border-radius:50%;width:44px;height:44px;font-size:1.2rem;cursor:pointer">🔄</button>
+  </div>
+</div>
+<style>@keyframes scanline{0%{top:10%}50%{top:88%}100%{top:10%}}</style>
+
+<!-- ══════ CLASIFICACIÓN DIRECTA ══════ -->
+<div id="modal-directo" style="display:none;position:fixed;inset:0;background:#000c;z-index:600;align-items:flex-end;justify-content:center">
+  <div style="background:var(--s1);border-radius:18px 18px 0 0;width:100%;max-width:480px;padding:18px 16px 28px;border-top:2px solid var(--border2);animation:su .2s ease">
+    <div style="width:36px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 14px"></div>
+    <div style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1.15rem;color:var(--text);margin-bottom:3px">✓ CLASIFICAR DIRECTO</div>
+    <div id="directo-sub" style="font-size:.72rem;color:var(--sub);margin-bottom:14px"></div>
+    <div style="display:flex;flex-direction:column;gap:7px">
+      <button onclick="aplicarDirecto('verde','✅ PROVEEDOR')"
+        style="padding:12px 14px;background:var(--gdim);border:2px solid var(--g);color:var(--g);border-radius:10px;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1.1rem;letter-spacing:1px;cursor:pointer;display:flex;align-items:center;gap:10px">
+        ✅ PROVEEDOR <span style="margin-left:auto;font-size:.62rem;color:#00cc66;font-weight:400;font-family:'Inter',sans-serif">No funciona · falla origen</span>
+      </button>
+      <button onclick="aplicarDirecto('amarillo','CARPA A')"
+        style="padding:12px 14px;background:var(--ydim);border:2px solid var(--y);color:var(--y);border-radius:10px;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1.1rem;letter-spacing:1px;cursor:pointer;display:flex;align-items:center;gap:10px">
+        🟡 CARPA A <span style="margin-left:auto;font-size:.62rem;color:#cc9900;font-weight:400;font-family:'Inter',sans-serif">Completo · sin detalles</span>
+      </button>
+      <button onclick="aplicarDirecto('amarillo','CARPA B')"
+        style="padding:12px 14px;background:var(--ydim);border:2px solid #cc9900;color:#cc9900;border-radius:10px;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1.1rem;letter-spacing:1px;cursor:pointer;display:flex;align-items:center;gap:10px">
+        🟡 CARPA B <span style="margin-left:auto;font-size:.62rem;color:#cc9900;font-weight:400;font-family:'Inter',sans-serif">Funciona · detalles menores</span>
+      </button>
+      <button onclick="aplicarDirecto('rojo','LOTE C')"
+        style="padding:12px 14px;background:var(--rdim);border:2px solid var(--r);color:var(--r);border-radius:10px;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1.1rem;letter-spacing:1px;cursor:pointer;display:flex;align-items:center;gap:10px">
+        🔴 LOTE C <span style="margin-left:auto;font-size:.62rem;color:#cc0022;font-weight:400;font-family:'Inter',sans-serif">Requiere inversión</span>
+      </button>
+      <button onclick="aplicarDirecto('rojo','LOTE D')"
+        style="padding:12px 14px;background:#0a0000;border:2px solid #880022;color:#ff6688;border-radius:10px;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1.1rem;letter-spacing:1px;cursor:pointer;display:flex;align-items:center;gap:10px">
+        🔴 LOTE D <span style="margin-left:auto;font-size:.62rem;color:#ff6688;font-weight:400;font-family:'Inter',sans-serif">Irreparable</span>
+      </button>
+    </div>
+    <button onclick="cerrarClasDirecta()" style="margin-top:12px;width:100%;padding:11px;background:var(--s3);color:var(--sub);border:1px solid var(--border2);border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:.9rem;cursor:pointer">← CANCELAR</button>
   </div>
 </div>
 
@@ -2028,6 +2105,260 @@ setInterval(()=>{document.getElementById('reloj').textContent=new Date().toLocal
 document.getElementById('reloj').textContent=new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&G.causa&&G.marca)iniciar();});
 cargarEstado();
+
+// ══════════════════════════════════════════════════
+// CLASIFICACIÓN DIRECTA — sin responder preguntas
+// ══════════════════════════════════════════════════
+function abrirClasDirecta(){
+  if(!G.causa||!G.marca){alert('Completa Causa y Marca primero');return;}
+  const ml=G.marca.toLowerCase();
+  const noRev=NOREV.some(p=>ml.includes(p));
+  if(noRev){alert('Este producto no se revisa en DS');return;}
+  if(G.causaInfo?.block){alert('Causa bloqueada — no procesa');return;}
+  document.getElementById('directo-sub').textContent=`C${G.causa} · ${G.marca}${G.sku?' · #'+G.sku:''}`;
+  document.getElementById('modal-directo').style.display='flex';
+  bloquearScroll();
+}
+
+function cerrarClasDirecta(){
+  document.getElementById('modal-directo').style.display='none';
+  desbloquearScroll();
+}
+
+function aplicarDirecto(color, etiq){
+  cerrarClasDirecta();
+  // Si es lote directo por causa, respetar eso
+  if(G.causaInfo?.lote&&color!=='rojo'){color='rojo';etiq='LOTE C';}
+  if(color==='verde')G.st.p++;
+  else if(color==='amarillo')G.st.c++;
+  else G.st.l++;
+  G.nArt++;
+  updStats();
+  addHist(color,G.causa,G.marca,G.sku,etiq);
+  showRes(color,etiq,G.marca,G.causa,G.causaInfo?.d||'',G.sku,'Clasificación manual directa · sin preguntas');
+}
+
+// ══════════════════════════════════════════════════
+// ESCÁNER DE ETIQUETA — BarcodeDetector API
+// Lee códigos de barras de la etiqueta del producto
+// y extrae: Causa, SKU (FUMCD/FCL), Marca, CU
+//
+// Etiqueta Baz Elektra tiene estos campos:
+//   CAUSA: número de causa (42, 41, etc.)
+//   FUMCD: número interno
+//   FCL. SERVICIO: folio
+//   SKU: 8 dígitos (31060737 etc.)
+//   MARCA/MODELO: texto libre
+//   CU (Código Único): 14+ dígitos
+//   CÓDIGO REMATE: 7 dígitos
+// ══════════════════════════════════════════════════
+let scanStream=null,scanFacing='environment',scanFlashOn=false;
+let scanDetector=null,scanLoop=null;
+let scanDatos={}; // datos extraídos del escaneo
+
+async function abrirEscaner(){
+  scanDatos={};
+  document.getElementById('scan-result-box').style.display='none';
+  document.getElementById('scan-controls').style.display='flex';
+  document.getElementById('scan-status').textContent='Apunta al código de barras · escaneo automático';
+  document.getElementById('scan-overlay').style.display='flex';
+  bloquearScroll();
+
+  // Verificar soporte BarcodeDetector
+  if('BarcodeDetector' in window){
+    try{
+      scanDetector=new BarcodeDetector({formats:['code_128','code_39','ean_13','ean_8','upc_a','upc_e','itf','pdf417','data_matrix','qr_code']});
+    }catch(e){scanDetector=null;}
+  }
+
+  await iniciarScanStream();
+
+  // Iniciar loop de detección automática
+  if(scanDetector) iniciarScanLoop();
+}
+
+async function iniciarScanStream(){
+  pararScanStream();
+  try{
+    scanStream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:scanFacing,width:{ideal:1920},height:{ideal:1080},focusMode:'continuous'},
+      audio:false
+    });
+    document.getElementById('scan-video').srcObject=scanStream;
+  }catch(e){
+    alert('No se pudo acceder a la cámara: '+e.message);
+    cerrarEscaner();
+  }
+}
+
+function iniciarScanLoop(){
+  if(scanLoop) clearInterval(scanLoop);
+  scanLoop=setInterval(async()=>{
+    if(!scanStream||!scanDetector) return;
+    const video=document.getElementById('scan-video');
+    if(video.readyState!==4) return;
+    try{
+      const codes=await scanDetector.detect(video);
+      if(codes.length>0){
+        const val=codes[0].rawValue;
+        procesarCodigoEscaneado(val);
+      }
+    }catch(e){}
+  },400);
+}
+
+function pararScanStream(){
+  if(scanLoop){clearInterval(scanLoop);scanLoop=null;}
+  if(scanStream){scanStream.getTracks().forEach(t=>t.stop());scanStream=null;}
+}
+
+// Captura manual (para el botón SCAN)
+function capturarManual(){
+  const video=document.getElementById('scan-video');
+  const canvas=document.getElementById('scan-canvas');
+  if(!video||video.readyState!==4){return;}
+  canvas.width=video.videoWidth||1280;
+  canvas.height=video.videoHeight||720;
+  canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
+
+  if(scanDetector){
+    scanDetector.detect(canvas).then(codes=>{
+      if(codes.length>0){procesarCodigoEscaneado(codes[0].rawValue);}
+      else{document.getElementById('scan-status').textContent='No se detectó código — intenta de nuevo';}
+    }).catch(()=>{document.getElementById('scan-status').textContent='Error al detectar — acerca más el teléfono';});
+  } else {
+    // Sin BarcodeDetector: modo manual — el usuario escribe el código
+    const val=prompt('Ingresa el número del código de barras manualmente:');
+    if(val) procesarCodigoEscaneado(val.trim());
+  }
+}
+
+// ── Lógica para interpretar los códigos de la etiqueta Baz Elektra ──
+// La etiqueta tiene varios códigos de barras, cada uno contiene
+// un valor específico. Los identificamos por longitud y patrón.
+function procesarCodigoEscaneado(raw){
+  if(!raw||raw.length<2) return;
+  const val=raw.trim();
+  let campo='';let label='';
+
+  // CU / Código Único: 14-18 dígitos numéricos
+  if(/^\d{14,18}$/.test(val)){
+    scanDatos.cu=val;campo='cu';label='CU (Código Único)';
+  }
+  // SKU: exactamente 8 dígitos
+  else if(/^\d{8}$/.test(val)){
+    scanDatos.sku=val;campo='sku';label='SKU';
+  }
+  // CAUSA: 2-6 dígitos (41, 42, 44, 108666…)
+  else if(/^\d{2,6}$/.test(val)&&CAUSAS[parseInt(val)]){
+    scanDatos.causa=parseInt(val);campo='causa';label='Causa';
+  }
+  // Folio de servicio: 8 dígitos que empiezan con 1
+  else if(/^1\d{7}$/.test(val)){
+    scanDatos.folio=val;campo='folio';label='Fcl. Servicio';
+  }
+  // FUMCD: 3-4 dígitos
+  else if(/^\d{3,4}$/.test(val)){
+    scanDatos.fumcd=val;campo='fumcd';label='FUMCD';
+  }
+  // Código remate: 7 dígitos
+  else if(/^\d{7}$/.test(val)){
+    scanDatos.remate=val;campo='remate';label='Cód. Remate';
+  }
+  // MX código (número de seguimiento): empieza con MX
+  else if(/^MX\d+/i.test(val)){
+    scanDatos.mx=val;campo='mx';label='Cód. MX';
+  }
+  // Texto: puede ser marca/modelo
+  else if(val.length>=3&&!/^\d+$/.test(val)){
+    scanDatos.texto=val;campo='texto';label='Texto detectado';
+  }
+
+  if(!campo) return;
+
+  // Evitar procesar duplicados en el loop automático
+  if(scanDetector&&scanLoop){
+    clearInterval(scanLoop);
+    scanLoop=setTimeout(()=>{ iniciarScanLoop(); },2000); // pausa de 2s tras detección
+  }
+
+  // Actualizar status
+  document.getElementById('scan-status').textContent=`✓ ${label}: ${val.length>20?val.slice(0,17)+'…':val}`;
+
+  // Mostrar panel de resultado si tenemos datos útiles
+  mostrarResultadoScan();
+}
+
+function mostrarResultadoScan(){
+  const fields=document.getElementById('scan-fields');
+  const items=[];
+  if(scanDatos.causa) items.push(`<div style="display:flex;justify-content:space-between;font-size:.78rem;padding:4px 8px;background:var(--s2);border-radius:5px"><span style="color:var(--sub)">Causa</span><span style="font-weight:700;color:var(--g)">${scanDatos.causa} — ${CAUSAS[scanDatos.causa]?.d||''}</span></div>`);
+  if(scanDatos.sku) items.push(`<div style="display:flex;justify-content:space-between;font-size:.78rem;padding:4px 8px;background:var(--s2);border-radius:5px"><span style="color:var(--sub)">SKU</span><span style="font-weight:700;color:var(--y);font-family:'JetBrains Mono',monospace">${scanDatos.sku}</span></div>`);
+  if(scanDatos.cu) items.push(`<div style="display:flex;justify-content:space-between;font-size:.78rem;padding:4px 8px;background:var(--s2);border-radius:5px"><span style="color:var(--sub)">CU</span><span style="font-weight:700;color:var(--blue);font-family:'JetBrains Mono',monospace;font-size:.7rem">${scanDatos.cu}</span></div>`);
+  if(scanDatos.folio) items.push(`<div style="display:flex;justify-content:space-between;font-size:.78rem;padding:4px 8px;background:var(--s2);border-radius:5px"><span style="color:var(--sub)">Fcl. Servicio</span><span style="font-weight:700;color:var(--text)">${scanDatos.folio}</span></div>`);
+  if(scanDatos.remate) items.push(`<div style="display:flex;justify-content:space-between;font-size:.78rem;padding:4px 8px;background:var(--s2);border-radius:5px"><span style="color:var(--sub)">Cód. Remate</span><span style="font-weight:700;color:var(--text)">${scanDatos.remate}</span></div>`);
+  if(scanDatos.mx) items.push(`<div style="display:flex;justify-content:space-between;font-size:.78rem;padding:4px 8px;background:var(--s2);border-radius:5px"><span style="color:var(--sub)">Cód. MX</span><span style="font-weight:700;color:var(--text);font-size:.68rem">${scanDatos.mx}</span></div>`);
+  if(scanDatos.texto) items.push(`<div style="display:flex;justify-content:space-between;font-size:.78rem;padding:4px 8px;background:var(--s2);border-radius:5px"><span style="color:var(--sub)">Texto</span><span style="font-weight:700;color:var(--text)">${scanDatos.texto}</span></div>`);
+
+  if(items.length>0){
+    fields.innerHTML=items.join('');
+    document.getElementById('scan-result-box').style.display='block';
+    document.getElementById('scan-controls').style.display='none';
+  }
+}
+
+// Aplicar los datos escaneados a los campos del formulario
+function aplicarEscaneo(){
+  if(scanDatos.causa){
+    document.getElementById('ic').value=scanDatos.causa;
+    onCausa();
+  }
+  if(scanDatos.sku){
+    document.getElementById('isku').value=scanDatos.sku;
+    onSku();
+  }
+  // Si escaneamos texto que podría ser una marca/modelo
+  if(scanDatos.texto&&!document.getElementById('im').value.trim()){
+    document.getElementById('im').value=scanDatos.texto;
+    onMarca();
+  }
+  cerrarEscaner();
+  // Foco en el campo que falte
+  if(!G.marca) document.getElementById('im').focus();
+  else if(!G.causa) document.getElementById('ic').focus();
+}
+
+function resetEscaner(){
+  scanDatos={};
+  document.getElementById('scan-result-box').style.display='none';
+  document.getElementById('scan-controls').style.display='flex';
+  document.getElementById('scan-status').textContent='Apunta al siguiente código';
+  if(scanDetector) iniciarScanLoop();
+}
+
+function cerrarEscaner(){
+  pararScanStream();
+  document.getElementById('scan-overlay').style.display='none';
+  desbloquearScroll();
+}
+
+function voltearScan(){
+  scanFacing=scanFacing==='environment'?'user':'environment';
+  iniciarScanStream().then(()=>{ if(scanDetector) iniciarScanLoop(); });
+}
+
+async function toggleScanFlash(){
+  if(!scanStream) return;
+  const track=scanStream.getVideoTracks()[0];
+  const caps=track?.getCapabilities?.()||{};
+  if(!caps.torch) return;
+  scanFlashOn=!scanFlashOn;
+  try{ await track.applyConstraints({advanced:[{torch:scanFlashOn}]}); }catch(e){}
+  const btn=document.getElementById('scan-flash-btn');
+  btn.style.background=scanFlashOn?'#ffcc00':'#222';
+  btn.style.color=scanFlashOn?'#000':'#ccc';
+}
+
 </script>
 </body>
 </html>
