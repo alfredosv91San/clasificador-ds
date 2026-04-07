@@ -9,6 +9,7 @@
 <title>DS Clasificador · Baz Elektra</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap');
+/* ══ TEMAS ══ */
 :root{
   --bg:#0a0a0a;--s1:#111;--s2:#181818;--s3:#222;--border:#2a2a2a;--border2:#333;
   --text:#f0f0f0;--sub:#777;--sub2:#444;
@@ -17,6 +18,36 @@
   --r:#ff3355;--rdim:#ff335514;
   --o:#ff7700;--odim:#ff770014;
   --blue:#3d9eff;
+}
+/* ☀️ Claro */
+[data-theme="claro"]{
+  --bg:#f5f5f0;--s1:#ffffff;--s2:#eeede8;--s3:#e0dfd9;--border:#d0cfc9;--border2:#bbb;
+  --text:#111111;--sub:#666;--sub2:#999;
+  --g:#00a855;--gdim:#00a85518;
+  --y:#cc8800;--ydim:#cc880018;
+  --r:#cc1133;--rdim:#cc113318;
+  --o:#cc5500;--odim:#cc550018;
+  --blue:#1a6bcc;
+}
+/* 🔵 Azul noche */
+[data-theme="azul"]{
+  --bg:#080e1a;--s1:#0d1526;--s2:#101d33;--s3:#162440;--border:#1e2e4a;--border2:#263a5e;
+  --text:#e8f0ff;--sub:#6a85b0;--sub2:#3a4f70;
+  --g:#00e5ff;--gdim:#00e5ff14;
+  --y:#ffd740;--ydim:#ffd74014;
+  --r:#ff4d6a;--rdim:#ff4d6a14;
+  --o:#ff8c42;--odim:#ff8c4214;
+  --blue:#5b9eff;
+}
+/* 🟢 Verde militar */
+[data-theme="verde"]{
+  --bg:#0a0f08;--s1:#111a0e;--s2:#162214;--s3:#1c2e18;--border:#243820;--border2:#2f4828;
+  --text:#d4e8c8;--sub:#6a8c58;--sub2:#3a5030;
+  --g:#7fff00;--gdim:#7fff0018;
+  --y:#ffd700;--ydim:#ffd70018;
+  --r:#ff3333;--rdim:#ff333318;
+  --o:#ff8c00;--odim:#ff8c0018;
+  --blue:#40c4ff;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html{font-size:15px;height:100%}
@@ -199,13 +230,29 @@ input.w{border-color:var(--o);background:var(--odim)}
 .cap-fill{height:4px;border-radius:2px;background:var(--g);transition:width .3s}
 .cap-track{flex:1;background:var(--border);border-radius:2px;height:4px;overflow:hidden}
 @keyframes fi{from{opacity:0}to{opacity:1}}
+.tbtn{background:none;border:1.5px solid var(--border2);border-radius:6px;width:28px;height:24px;font-size:.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:border-color .15s,background .15s}
+.tbtn:active{transform:scale(.9)}
+.tbtn.tact{border-color:var(--g);background:var(--gdim)}
 @keyframes su{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
 </style>
 </head>
 <body>
 <div class="hdr">
-  <div><div class="logo">DS Clasificador<span>Baz · Elektra · Devoluciones</span></div></div>
-  <div><div class="clock" id="reloj">--:--</div><div class="clock-sub">Turno</div></div>
+  <div>
+    <div class="logo">DS Clasificador<span>Baz · Elektra · Devoluciones</span></div>
+    <!-- Selector de tema -->
+    <div style="display:flex;gap:5px;margin-top:5px">
+      <button onclick="setTema('')"    id="t-negro" class="tbtn tact" title="Negro">🌑</button>
+      <button onclick="setTema('claro')"  id="t-claro" class="tbtn" title="Claro">☀️</button>
+      <button onclick="setTema('azul')"   id="t-azul"  class="tbtn" title="Azul noche">🔵</button>
+      <button onclick="setTema('verde')"  id="t-verde" class="tbtn" title="Verde militar">🟢</button>
+    </div>
+  </div>
+  <div style="text-align:right">
+    <div class="clock" id="reloj">--:--</div>
+    <div class="clock-sub" id="turno-lbl">Turno</div>
+    <div id="racha-lbl" style="font-size:.52rem;color:var(--g);margin-top:2px;display:none">🔥 Racha: <span id="racha-n">0</span></div>
+  </div>
 </div>
 <div class="stats">
   <div class="stat sg"><div class="sn" id="c0">0</div><div class="sl">Proveedor</div></div>
@@ -1295,7 +1342,79 @@ general:[
 // ESTADO GLOBAL
 // ══════════════════════════════════════════════════
 const MAX_PIEZAS=150;
-let G={causa:null,causaInfo:null,marca:'',cat:'general',sku:'',cu:'',resp:{},clsActual:null,st:{p:0,c:0,l:0,n:0},hist:[],nArt:0};
+let G={causa:null,causaInfo:null,marca:'',cat:'general',sku:'',cu:'',resp:{},clsActual:null,st:{p:0,c:0,l:0,n:0},hist:[],nArt:0,racha:0};
+const TURNO_INICIO=Date.now();
+
+// ══ TEMAS ══
+function setTema(tema){
+  document.documentElement.setAttribute('data-theme',tema);
+  localStorage.setItem('ds_tema',tema);
+  document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('tact'));
+  const map={'':'t-negro','claro':'t-claro','azul':'t-azul','verde':'t-verde'};
+  const btn=document.getElementById(map[tema]||'t-negro');
+  if(btn)btn.classList.add('tact');
+}
+function cargarTema(){
+  const t=localStorage.getItem('ds_tema')||'';
+  setTema(t);
+}
+
+// ══ RACHA ══
+function actualizarRacha(color){
+  if(color==='rojo'||color==='bloq'){G.racha=0;}
+  else{G.racha=(G.racha||0)+1;}
+  const el=document.getElementById('racha-lbl');
+  const rn=document.getElementById('racha-n');
+  if(!el||!rn)return;
+  if(G.racha>=3){el.style.display='block';rn.textContent=G.racha;}
+  else{el.style.display='none';}
+}
+
+// ══ RELOJ + TURNO ══
+function actualizarReloj(){
+  const now=new Date();
+  document.getElementById('reloj').textContent=now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+  // Duración de turno
+  const mins=Math.floor((Date.now()-TURNO_INICIO)/60000);
+  const h=Math.floor(mins/60),m=mins%60;
+  const lbl=document.getElementById('turno-lbl');
+  if(lbl)lbl.textContent=h>0?`${h}h ${m}m`:`${m} min`;
+}
+
+// ══ BEEP ══
+let _audioCtx=null;
+function getAudioCtx(){
+  if(!_audioCtx)_audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  return _audioCtx;
+}
+function beep(frecuencia,duracion,tipo='sine',volumen=0.18){
+  try{
+    const ctx=getAudioCtx();
+    const osc=ctx.createOscillator();
+    const gain=ctx.createGain();
+    osc.connect(gain);gain.connect(ctx.destination);
+    osc.type=tipo;osc.frequency.setValueAtTime(frecuencia,ctx.currentTime);
+    gain.gain.setValueAtTime(volumen,ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+duracion);
+    osc.start(ctx.currentTime);osc.stop(ctx.currentTime+duracion);
+  }catch(e){}
+}
+function sonarResultado(color){
+  if(color==='verde'){
+    // Proveedor: dos notas ascendentes, alegre
+    beep(523,0.12);setTimeout(()=>beep(784,0.18),130);
+  } else if(color==='amarillo'){
+    // Carpa: nota neutral corta
+    beep(440,0.15,'sine',0.12);
+  } else if(color==='rojo'){
+    // Lote: nota grave corta
+    beep(220,0.2,'triangle',0.15);
+  } else {
+    // Bloqueado: breve buzz
+    beep(180,0.12,'sawtooth',0.08);
+  }
+}
+
 
 // ══════════════════════════════════════════════════
 // CLASIFICACIÓN — con criterios actualizados del jefe
@@ -1529,11 +1648,11 @@ function iniciar(){
   if(!G.causa||!G.marca)return;
   const ml=G.marca.toLowerCase();
   const noRev=NOREV.some(p=>ml.includes(p));
-  if(G.sku&&skuBloq(G.sku)){G.st.n++;updStats();addHist('bloq',G.causa,G.marca,G.sku,'🚫 SKU NO REVISABLE');showRes('rojo','🚫 SKU NO REVISABLE',G.marca,G.causa,G.causaInfo?.d||'',G.sku,`SKU ${G.sku} no se diagnostica en DS.`);return;}
-  if(noRev){G.st.n++;updStats();addHist('bloq',G.causa,G.marca,G.sku,'⛔ NO SE REVISA');qr('⛔','NO SE REVISA EN DS',G.marca,'Este producto no se diagnostica.','qr-no');return;}
-  if(G.causaInfo?.block){G.st.n++;updStats();addHist('bloq',G.causa,G.marca,G.sku,'🚫 NO PROCESA');qr('🚫','NO PROCESA · Causa '+G.causa,G.causaInfo.d,'No genera etiqueta.','qr-no');return;}
+  if(G.sku&&skuBloq(G.sku)){G.st.n++;sonarResultado('bloq');actualizarRacha('bloq');updStats();addHist('bloq',G.causa,G.marca,G.sku,'🚫 SKU NO REVISABLE');showRes('rojo','🚫 SKU NO REVISABLE',G.marca,G.causa,G.causaInfo?.d||'',G.sku,`SKU ${G.sku} no se diagnostica en DS.`);return;}
+  if(noRev){G.st.n++;sonarResultado('bloq');actualizarRacha('bloq');updStats();addHist('bloq',G.causa,G.marca,G.sku,'⛔ NO SE REVISA');qr('⛔','NO SE REVISA EN DS',G.marca,'Este producto no se diagnostica.','qr-no');return;}
+  if(G.causaInfo?.block){G.st.n++;sonarResultado('bloq');actualizarRacha('bloq');updStats();addHist('bloq',G.causa,G.marca,G.sku,'🚫 NO PROCESA');qr('🚫','NO PROCESA · Causa '+G.causa,G.causaInfo.d,'No genera etiqueta.','qr-no');return;}
   if(G.causaInfo?.cf){const esTaller=TALLER.some(t=>ml.includes(t));if(esTaller){G.st.n++;updStats();addHist('bloq',G.causa,G.marca,G.sku,'🔧 TALLER PROV');showRes('amarillo','🔧 TALLER PROV',G.marca,G.causa,G.causaInfo.d,G.sku,`<b>${G.marca}</b> va directo al taller del proveedor.`);return;}}
-  if(G.causaInfo?.lote){G.st.l++;updStats();addHist('rojo',G.causa,G.marca,G.sku,'🔴 LOTE');showRes('rojo','LOTE C/D',G.marca,G.causa,G.causaInfo.d,G.sku,'LOTE C si daño moderado · LOTE D si irreparable.');return;}
+  if(G.causaInfo?.lote){G.st.l++;sonarResultado('rojo');actualizarRacha('rojo');updStats();addHist('rojo',G.causa,G.marca,G.sku,'🔴 LOTE');showRes('rojo','LOTE C/D',G.marca,G.causa,G.causaInfo.d,G.sku,'LOTE C si daño moderado · LOTE D si irreparable.');return;}
   G.resp={};
   abrirModal();
 }
@@ -1612,6 +1731,8 @@ function confirmarClas(){
   else if(cls.color==='amarillo')G.st.c++;
   else G.st.l++;
   G.nArt++;
+  sonarResultado(cls.color);
+  actualizarRacha(cls.color);
   updStats();
   addHist(cls.color,G.causa,G.marca,G.sku,cls.etiq,G.cu||'');
   showRes(cls.color,cls.etiq,G.marca,G.causa,G.causaInfo?.d||'',G.sku,cls.razon);
@@ -2148,9 +2269,10 @@ function actualizarContadorExtra(){const el=document.getElementById('cam-extra-c
 // ══════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════
-setInterval(()=>{document.getElementById('reloj').textContent=new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});},1000);
+setInterval(actualizarReloj,1000);actualizarReloj();
 document.getElementById('reloj').textContent=new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&G.causa&&G.marca)iniciar();});
+cargarTema();
 cargarEstado();
 
 // ══════════════════════════════════════════════════
@@ -2180,6 +2302,8 @@ function aplicarDirecto(color, etiq){
   else if(color==='amarillo')G.st.c++;
   else G.st.l++;
   G.nArt++;
+  sonarResultado(color);
+  actualizarRacha(color);
   updStats();
   addHist(color,G.causa,G.marca,G.sku,etiq);
   showRes(color,etiq,G.marca,G.causa,G.causaInfo?.d||'',G.sku,'Clasificación manual directa · sin preguntas');
