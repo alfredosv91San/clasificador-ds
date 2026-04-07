@@ -201,6 +201,7 @@ input.w{border-color:var(--o);background:var(--odim)}
 @keyframes fi{from{opacity:0}to{opacity:1}}
 @keyframes su{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
 <div class="hdr">
@@ -246,7 +247,9 @@ input.w{border-color:var(--o);background:var(--odim)}
       <input id="isku" type="text" inputmode="numeric" placeholder="31060737"
         autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
         oninput="onSku()" style="flex:1">
-      <button onclick="abrirEscaner()" title="Escanear etiqueta"
+      <button onclick="abrirOCR()" title="OCR — Foto de etiqueta"
+        style="flex-shrink:0;padding:0;width:44px;height:44px;background:var(--s2);border:1.5px solid #00cc66;border-radius:8px;color:#00cc66;font-size:1.3rem;cursor:pointer;display:flex;align-items:center;justify-content:center" id="ocr-btn">🔍</button>
+      <button onclick="abrirEscaner()" title="Escanear código de barras"
         style="flex-shrink:0;padding:0;width:44px;height:44px;background:var(--s2);border:1.5px solid var(--border2);border-radius:8px;color:var(--blue);font-size:1.3rem;cursor:pointer;display:flex;align-items:center;justify-content:center">📷</button>
     </div>
     <div id="sku-hint" class="hint"></div>
@@ -486,6 +489,62 @@ input.w{border-color:var(--o);background:var(--odim)}
     <button onclick="toggleScanFlash()" id="scan-flash-btn" style="background:#222;border:1px solid #333;color:#ccc;border-radius:50%;width:44px;height:44px;font-size:1.3rem;cursor:pointer">⚡</button>
     <button onclick="capturarManual()" style="background:#fff;border:none;border-radius:50%;width:68px;height:68px;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 4px #333;font-family:'Barlow Condensed',sans-serif;font-weight:900;color:#000;letter-spacing:0">SCAN</button>
     <button onclick="voltearScan()" style="background:#222;border:1px solid #333;color:#ccc;border-radius:50%;width:44px;height:44px;font-size:1.2rem;cursor:pointer">🔄</button>
+  </div>
+</div>
+
+<!-- ══════ OCR ETIQUETA ══════ -->
+<div id="ocr-overlay" style="display:none;position:fixed;inset:0;background:#000;z-index:500;flex-direction:column;overflow:hidden">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#111;flex-shrink:0">
+    <div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1.1rem;color:#00cc66;letter-spacing:1px">🔍 OCR · LEER ETIQUETA</div>
+      <div id="ocr-status" style="font-size:.62rem;color:var(--sub);margin-top:1px">Toma foto de la etiqueta completa</div>
+    </div>
+    <button onclick="cerrarOCR()" style="background:none;border:none;color:#aaa;font-size:1.6rem;cursor:pointer;line-height:1">✕</button>
+  </div>
+  <!-- Vista cámara -->
+  <div id="ocr-cam-view" style="flex:1;position:relative;overflow:hidden;background:#000;display:flex;align-items:center;justify-content:center">
+    <video id="ocr-video" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover"></video>
+    <canvas id="ocr-canvas" style="display:none"></canvas>
+    <!-- Marco etiqueta completa -->
+    <div style="position:absolute;width:90%;max-width:360px;height:220px;border:2px solid rgba(0,204,102,.5);border-radius:8px;box-shadow:0 0 0 9999px #000a;pointer-events:none">
+      <div style="position:absolute;top:-2px;left:-2px;width:22px;height:22px;border-top:3px solid #00cc66;border-left:3px solid #00cc66;border-radius:4px 0 0 0"></div>
+      <div style="position:absolute;top:-2px;right:-2px;width:22px;height:22px;border-top:3px solid #00cc66;border-right:3px solid #00cc66;border-radius:0 4px 0 0"></div>
+      <div style="position:absolute;bottom:-2px;left:-2px;width:22px;height:22px;border-bottom:3px solid #00cc66;border-left:3px solid #00cc66;border-radius:0 0 0 4px"></div>
+      <div style="position:absolute;bottom:-2px;right:-2px;width:22px;height:22px;border-bottom:3px solid #00cc66;border-right:3px solid #00cc66;border-radius:0 0 4px 0"></div>
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none">
+        <span style="font-size:.6rem;color:rgba(0,204,102,.6);text-transform:uppercase;letter-spacing:1px">Centra la etiqueta completa</span>
+      </div>
+    </div>
+  </div>
+  <!-- Preview capturada -->
+  <div id="ocr-preview-view" style="display:none;flex:1;position:relative;overflow:hidden;background:#000;align-items:center;justify-content:center">
+    <img id="ocr-preview-img" style="max-width:100%;max-height:100%;object-fit:contain">
+  </div>
+  <!-- Resultado OCR -->
+  <div id="ocr-result-box" style="display:none;background:#111;border-top:1px solid var(--border2);padding:12px 14px;flex-shrink:0;max-height:55vh;overflow-y:auto">
+    <div style="font-size:.58rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#00cc66;margin-bottom:8px">✓ DATOS EXTRAÍDOS</div>
+    <div id="ocr-fields" style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px"></div>
+    <div id="ocr-raw-box" style="display:none;background:var(--s2);border-radius:6px;padding:8px;margin-bottom:10px">
+      <div style="font-size:.52rem;color:var(--sub);margin-bottom:4px;text-transform:uppercase;letter-spacing:.8px">Texto completo detectado</div>
+      <div id="ocr-raw-txt" style="font-size:.68rem;color:#ccc;line-height:1.5;white-space:pre-wrap;word-break:break-all"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <button onclick="aplicarOCR()" style="padding:11px;background:#00cc66;color:#000;border:none;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:.95rem;cursor:pointer">✓ USAR DATOS</button>
+      <button onclick="retryOCR()" style="padding:11px;background:var(--s3);color:var(--sub);border:1px solid var(--border2);border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:.85rem;cursor:pointer">↺ REINTENTAR</button>
+    </div>
+  </div>
+  <!-- Controles -->
+  <div id="ocr-controls" style="padding:12px 20px 24px;background:#111;display:flex;align-items:center;justify-content:center;gap:20px;flex-shrink:0">
+    <button onclick="toggleOCRFlash()" id="ocr-flash-btn" style="background:#222;border:1px solid #333;color:#ccc;border-radius:50%;width:44px;height:44px;font-size:1.3rem;cursor:pointer">⚡</button>
+    <button onclick="capturarOCR()" style="background:#00cc66;border:none;border-radius:50%;width:68px;height:68px;font-size:1.5rem;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 4px #006633">🔍</button>
+    <button onclick="voltearOCR()" style="background:#222;border:1px solid #333;color:#ccc;border-radius:50%;width:44px;height:44px;font-size:1.2rem;cursor:pointer">🔄</button>
+  </div>
+  <!-- Barra progreso OCR -->
+  <div id="ocr-progress" style="display:none;background:#111;padding:14px 20px 20px;text-align:center;flex-shrink:0">
+    <div style="font-size:.78rem;color:#00cc66;margin-bottom:8px" id="ocr-progress-txt">Leyendo texto…</div>
+    <div style="background:var(--border);border-radius:4px;height:6px;overflow:hidden">
+      <div id="ocr-progress-bar" style="height:100%;background:#00cc66;border-radius:4px;width:0%;transition:width .3s"></div>
+    </div>
   </div>
 </div>
 <style>@keyframes scanline{0%{top:10%}50%{top:88%}100%{top:10%}}</style>
@@ -1255,7 +1314,7 @@ general:[
 // ESTADO GLOBAL
 // ══════════════════════════════════════════════════
 const MAX_PIEZAS=150;
-let G={causa:null,causaInfo:null,marca:'',cat:'general',sku:'',resp:{},clsActual:null,st:{p:0,c:0,l:0,n:0},hist:[],nArt:0};
+let G={causa:null,causaInfo:null,marca:'',cat:'general',sku:'',cu:'',resp:{},clsActual:null,st:{p:0,c:0,l:0,n:0},hist:[],nArt:0};
 
 // ══════════════════════════════════════════════════
 // CLASIFICACIÓN — con criterios actualizados del jefe
@@ -1573,7 +1632,7 @@ function confirmarClas(){
   else G.st.l++;
   G.nArt++;
   updStats();
-  addHist(cls.color,G.causa,G.marca,G.sku,cls.etiq);
+  addHist(cls.color,G.causa,G.marca,G.sku,cls.etiq,G.cu||'');
   showRes(cls.color,cls.etiq,G.marca,G.causa,G.causaInfo?.d||'',G.sku,cls.razon);
 }
 
@@ -1614,7 +1673,7 @@ async function siguiente(){
   const nota=(document.getElementById('rc-nota')?.value||'').trim();
   const fotosGuardadas=G_fotos.filter(Boolean).map(f=>f);
   if(G.hist.length){G.hist[0].nota=nota;G.hist[0].fotos=fotosGuardadas;}
-  guardarEstado();
+  guardarEstado(true);
   const hayFotos=G_fotos.some(Boolean);
   if(hayFotos)await guardarTodasFotos(true);
   document.getElementById('rov').style.display='none';
@@ -1632,7 +1691,7 @@ function reset(){
   document.getElementById('qra').innerHTML='';
   const btn=document.getElementById('mainbtn');
   btn.disabled=true;btn.style.background='';btn.style.color='';btn.textContent='REVISAR ⚡';
-  G.causa=null;G.causaInfo=null;G.marca='';G.cat='general';G.sku='';G.resp={};G.clsActual=null;
+  G.causa=null;G.causaInfo=null;G.marca='';G.cat='general';G.sku='';G.cu='';G.resp={};G.clsActual=null;
 }
 
 // ══════════════════════════════════════════════════
@@ -1658,10 +1717,10 @@ function actualizarCapacidad(){
   document.getElementById('cap-pct').textContent=p+'%';
 }
 
-function addHist(col,causa,marca,sku,res){
+function addHist(col,causa,marca,sku,res,cu=''){
   const t=new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
   G.nArt=Math.max(G.nArt,G.hist.length+1);
-  G.hist.unshift({col,causa,marca,sku,res,t,nota:'',fotos:[]});
+  G.hist.unshift({col,causa,marca,sku,res,t,nota:'',fotos:[],cu:cu||G.cu||''});
   if(G.hist.length>MAX_PIEZAS)G.hist=G.hist.slice(0,MAX_PIEZAS);
   renderHist();guardarEstado();
 }
@@ -1720,7 +1779,7 @@ function toggleHist(i){
 
 function guardarNota(i){
   const ta=document.getElementById('hn-'+i);if(!ta)return;
-  G.hist[i].nota=ta.value.trim();guardarEstado();
+  G.hist[i].nota=ta.value.trim();guardarEstado(true);
   ta.style.borderColor='var(--g)';setTimeout(()=>{ta.style.borderColor='var(--border)';},1200);
 }
 
@@ -1768,7 +1827,7 @@ function confirmarBorrar(){
 function borrarConPDF(){document.getElementById('modal-borrar').style.display='none';exportarPDF();setTimeout(()=>clrH(),1500);}
 function borrarSinPDF(){document.getElementById('modal-borrar').style.display='none';clrH();}
 function cancelarBorrar(){document.getElementById('modal-borrar').style.display='none';}
-function clrH(){G.hist=[];G.st={p:0,c:0,l:0,n:0};updStats();renderHist();guardarEstado();document.getElementById('cap-bar').style.display='none';}
+function clrH(){G.hist=[];G.st={p:0,c:0,l:0,n:0};updStats();renderHist();guardarEstado(true);document.getElementById('cap-bar').style.display='none';}
 
 // ══════════════════════════════════════════════════
 // PERSISTENCIA — IndexedDB para fotos, localStorage para texto
@@ -1804,18 +1863,25 @@ async function cargarFotosDB(histIdx){
   });
 }
 
-function guardarEstado(){
-  try{
-    const hoy=new Date().toLocaleDateString('es-MX');
-    const histSinFotos=G.hist.map(h=>({...h,fotos:undefined}));
-    localStorage.setItem(LS_KEY,JSON.stringify({fecha:hoy,st:G.st,hist:histSinFotos}));
-  }catch(e){
+// ── DEBOUNCE: evita guardar mientras el usuario está escribiendo ──
+let _saveTimer=null;
+function guardarEstado(inmediato=false){
+  if(_saveTimer){clearTimeout(_saveTimer);_saveTimer=null;}
+  const _doSave=()=>{
     try{
       const hoy=new Date().toLocaleDateString('es-MX');
-      const histMin=G.hist.slice(0,100).map(h=>({col:h.col,causa:h.causa,marca:h.marca,sku:h.sku,res:h.res,t:h.t}));
-      localStorage.setItem(LS_KEY,JSON.stringify({fecha:hoy,st:G.st,hist:histMin}));
-    }catch(e2){}
-  }
+      const histSinFotos=G.hist.map(h=>({...h,fotos:undefined}));
+      localStorage.setItem(LS_KEY,JSON.stringify({fecha:hoy,st:G.st,hist:histSinFotos}));
+    }catch(e){
+      try{
+        const hoy=new Date().toLocaleDateString('es-MX');
+        const histMin=G.hist.slice(0,100).map(h=>({col:h.col,causa:h.causa,marca:h.marca,sku:h.sku,res:h.res,t:h.t,cu:h.cu}));
+        localStorage.setItem(LS_KEY,JSON.stringify({fecha:hoy,st:G.st,hist:histMin}));
+      }catch(e2){}
+    }
+  };
+  if(inmediato){_doSave();}
+  else{_saveTimer=setTimeout(_doSave,500);}
 }
 
 async function cargarEstado(){
@@ -1875,8 +1941,8 @@ function exportarJSON(){
 function exportarPDF(){
   const hoy=new Date().toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long'});
   const total=G.st.p+G.st.c+G.st.l+G.st.n;
-  const rows=G.hist.slice(0,150).map(h=>{const ico=h.col==='verde'?'✅':h.col==='amarillo'?'🟡':h.col==='rojo'?'🔴':'⚫';return`<tr style="border-bottom:1px solid #eee;font-size:12px"><td style="padding:5px 8px;color:#666">${h.t}</td><td style="padding:5px 8px;font-weight:700">${h.causa}</td><td style="padding:5px 8px">${h.marca||'—'}</td><td style="padding:5px 8px;color:#999">${h.sku||''}</td><td style="padding:5px 8px">${ico} ${h.res}</td><td style="padding:5px 8px;font-size:11px;color:#555;font-style:italic">${h.nota||'—'}</td></tr>`;}).join('');
-  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>DS Clasificador</title><style>body{font-family:Arial,sans-serif;padding:20px;color:#111}h1{font-size:18px;margin-bottom:4px}.sub{color:#888;font-size:12px;margin-bottom:16px}.stats{display:flex;gap:16px;margin-bottom:20px}.sbox{padding:12px 20px;border-radius:8px;text-align:center;min-width:80px}.snum{font-size:28px;font-weight:900;line-height:1}.slbl{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#666;margin-top:2px}table{width:100%;border-collapse:collapse}th{text-align:left;padding:6px 8px;background:#f5f5f5;font-size:11px;text-transform:uppercase;color:#888}@media print{body{padding:10px}}</style></head><body><h1>📦 DS CLASIFICADOR · BAZ ELEKTRA</h1><div class="sub">${hoy} · Total: ${total} piezas</div><div class="stats"><div class="sbox" style="background:#00ff871a;border:2px solid #00ff87"><div class="snum" style="color:#00cc66">${G.st.p}</div><div class="slbl">Proveedor</div></div><div class="sbox" style="background:#ffcc001a;border:2px solid #ffcc00"><div class="snum" style="color:#cc9900">${G.st.c}</div><div class="slbl">Carpa</div></div><div class="sbox" style="background:#ff33551a;border:2px solid #ff3355"><div class="snum" style="color:#cc0022">${G.st.l}</div><div class="slbl">Lote</div></div><div class="sbox" style="background:#f5f5f5;border:2px solid #ccc"><div class="snum" style="color:#999">${G.st.n}</div><div class="slbl">No proc.</div></div></div><table><thead><tr><th>Hora</th><th>Causa</th><th>Marca</th><th>SKU</th><th>Resultado</th><th>Nota</th></tr></thead><tbody>${rows}</tbody></table><script>window.onload=function(){window.print()}<\/script></body></html>`;
+  const rows=G.hist.slice(0,150).map(h=>{const ico=h.col==='verde'?'✅':h.col==='amarillo'?'🟡':h.col==='rojo'?'🔴':'⚫';return`<tr style="border-bottom:1px solid #eee;font-size:12px"><td style="padding:5px 8px;color:#666">${h.t}</td><td style="padding:5px 8px;font-weight:700">${h.causa}</td><td style="padding:5px 8px">${h.marca||'—'}</td><td style="padding:5px 8px;color:#999;font-size:11px">${h.sku||''}</td><td style="padding:5px 8px;color:#3d9eff;font-size:10px;font-family:monospace">${h.cu||''}</td><td style="padding:5px 8px">${ico} ${h.res}</td><td style="padding:5px 8px;font-size:11px;color:#555;font-style:italic">${h.nota||'—'}</td></tr>`;}).join('');
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>DS Clasificador</title><style>body{font-family:Arial,sans-serif;padding:20px;color:#111}h1{font-size:18px;margin-bottom:4px}.sub{color:#888;font-size:12px;margin-bottom:16px}.stats{display:flex;gap:16px;margin-bottom:20px}.sbox{padding:12px 20px;border-radius:8px;text-align:center;min-width:80px}.snum{font-size:28px;font-weight:900;line-height:1}.slbl{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#666;margin-top:2px}table{width:100%;border-collapse:collapse}th{text-align:left;padding:6px 8px;background:#f5f5f5;font-size:11px;text-transform:uppercase;color:#888}@media print{body{padding:10px}}</style></head><body><h1>📦 DS CLASIFICADOR · BAZ ELEKTRA</h1><div class="sub">${hoy} · Total: ${total} piezas</div><div class="stats"><div class="sbox" style="background:#00ff871a;border:2px solid #00ff87"><div class="snum" style="color:#00cc66">${G.st.p}</div><div class="slbl">Proveedor</div></div><div class="sbox" style="background:#ffcc001a;border:2px solid #ffcc00"><div class="snum" style="color:#cc9900">${G.st.c}</div><div class="slbl">Carpa</div></div><div class="sbox" style="background:#ff33551a;border:2px solid #ff3355"><div class="snum" style="color:#cc0022">${G.st.l}</div><div class="slbl">Lote</div></div><div class="sbox" style="background:#f5f5f5;border:2px solid #ccc"><div class="snum" style="color:#999">${G.st.n}</div><div class="slbl">No proc.</div></div></div><table><thead><tr><th>Hora</th><th>Causa</th><th>Marca</th><th>SKU</th><th>CU</th><th>Resultado</th><th>Nota</th></tr></thead><tbody>${rows}</tbody></table><script>window.onload=function(){window.print()}<\/script></body></html>`;
   window.open(URL.createObjectURL(new Blob([html],{type:'text/html'})),'_blank');
 }
 
@@ -2313,7 +2379,12 @@ function aplicarEscaneo(){
     document.getElementById('ic').value=scanDatos.causa;
     onCausa();
   }
-  if(scanDatos.sku){
+  // CU de 14+ dígitos va al campo SKU y se guarda en G.cu
+  if(scanDatos.cu){
+    document.getElementById('isku').value=scanDatos.cu;
+    G.cu=scanDatos.cu;
+    onSku();
+  } else if(scanDatos.sku){
     document.getElementById('isku').value=scanDatos.sku;
     onSku();
   }
@@ -2357,6 +2428,273 @@ async function toggleScanFlash(){
   const btn=document.getElementById('scan-flash-btn');
   btn.style.background=scanFlashOn?'#ffcc00':'#222';
   btn.style.color=scanFlashOn?'#000':'#ccc';
+}
+
+// ══════════════════════════════════════════════════
+// OCR TESSERACT — Lee la etiqueta completa
+// Extrae: CAUSA, SKU (14 dígitos), Marca/Modelo,
+// FUMCD, Folio, Código Remate, CU (MX...)
+// ══════════════════════════════════════════════════
+let ocrStream=null,ocrFacing='environment',ocrFlashOn=false;
+let ocrDatos={};
+let tesseractWorker=null;
+
+async function getTesseractWorker(){
+  if(tesseractWorker) return tesseractWorker;
+  try{
+    tesseractWorker=await Tesseract.createWorker('spa+eng',1,{
+      logger:m=>{
+        if(m.status==='recognizing text'){
+          const p=Math.round((m.progress||0)*100);
+          document.getElementById('ocr-progress-bar').style.width=p+'%';
+          document.getElementById('ocr-progress-txt').textContent=`Leyendo texto… ${p}%`;
+        }
+      }
+    });
+    await tesseractWorker.setParameters({tessedit_char_whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 :/.-_'});
+  }catch(e){
+    tesseractWorker=null;
+    throw e;
+  }
+  return tesseractWorker;
+}
+
+async function abrirOCR(){
+  ocrDatos={};
+  document.getElementById('ocr-result-box').style.display='none';
+  document.getElementById('ocr-progress').style.display='none';
+  document.getElementById('ocr-controls').style.display='flex';
+  document.getElementById('ocr-cam-view').style.display='flex';
+  document.getElementById('ocr-preview-view').style.display='none';
+  document.getElementById('ocr-status').textContent='Toma foto de la etiqueta completa';
+  document.getElementById('ocr-overlay').style.display='flex';
+  bloquearScroll();
+  await iniciarOCRStream();
+}
+
+async function iniciarOCRStream(){
+  pararOCRStream();
+  try{
+    ocrStream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:ocrFacing,width:{ideal:3840},height:{ideal:2160}},audio:false
+    });
+    document.getElementById('ocr-video').srcObject=ocrStream;
+  }catch(e){
+    try{
+      ocrStream=await navigator.mediaDevices.getUserMedia({
+        video:{facingMode:ocrFacing,width:{ideal:1920},height:{ideal:1080}},audio:false
+      });
+      document.getElementById('ocr-video').srcObject=ocrStream;
+    }catch(e2){alert('No se pudo acceder a la cámara: '+e2.message);cerrarOCR();}
+  }
+}
+
+function pararOCRStream(){
+  if(ocrStream){ocrStream.getTracks().forEach(t=>t.stop());ocrStream=null;}
+}
+
+function cerrarOCR(){
+  pararOCRStream();
+  document.getElementById('ocr-overlay').style.display='none';
+  desbloquearScroll();
+}
+
+function voltearOCR(){
+  ocrFacing=ocrFacing==='environment'?'user':'environment';
+  ocrFlashOn=false;
+  actualizarBtnOCRFlash();
+  iniciarOCRStream();
+}
+
+async function toggleOCRFlash(){
+  if(!ocrStream) return;
+  const track=ocrStream.getVideoTracks()[0];
+  const caps=track?.getCapabilities?.()||{};
+  if(!caps.torch) return;
+  ocrFlashOn=!ocrFlashOn;
+  try{await track.applyConstraints({advanced:[{torch:ocrFlashOn}]});}catch(e){}
+  actualizarBtnOCRFlash();
+}
+
+function actualizarBtnOCRFlash(){
+  const btn=document.getElementById('ocr-flash-btn');
+  btn.style.background=ocrFlashOn?'#ffcc00':'#222';
+  btn.style.color=ocrFlashOn?'#000':'#ccc';
+}
+
+async function capturarOCR(){
+  const video=document.getElementById('ocr-video');
+  const canvas=document.getElementById('ocr-canvas');
+  if(!video||video.readyState<2){return;}
+
+  // Capturar frame
+  const track=ocrStream?.getVideoTracks()[0];
+  const settings=track?.getSettings()||{};
+  canvas.width=settings.width||video.videoWidth||1920;
+  canvas.height=settings.height||video.videoHeight||1080;
+  canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
+
+  // Mostrar preview
+  const imgData=canvas.toDataURL('image/jpeg',0.95);
+  document.getElementById('ocr-preview-img').src=imgData;
+  document.getElementById('ocr-cam-view').style.display='none';
+  document.getElementById('ocr-preview-view').style.display='flex';
+  document.getElementById('ocr-controls').style.display='none';
+  document.getElementById('ocr-progress').style.display='block';
+  document.getElementById('ocr-progress-bar').style.width='0%';
+  document.getElementById('ocr-progress-txt').textContent='Iniciando OCR…';
+  document.getElementById('ocr-status').textContent='Analizando imagen…';
+
+  try{
+    const worker=await getTesseractWorker();
+    const result=await worker.recognize(canvas);
+    const texto=result.data.text||'';
+    procesarTextoOCR(texto);
+  }catch(e){
+    document.getElementById('ocr-status').textContent='Error al leer — intenta de nuevo';
+    document.getElementById('ocr-progress').style.display='none';
+    document.getElementById('ocr-controls').style.display='flex';
+    document.getElementById('ocr-cam-view').style.display='flex';
+    document.getElementById('ocr-preview-view').style.display='none';
+  }
+}
+
+function procesarTextoOCR(texto){
+  document.getElementById('ocr-progress').style.display='none';
+  ocrDatos={};
+
+  // Limpiar texto: separar en líneas, quitar basura
+  const lineas=texto.split(/\n/).map(l=>l.trim()).filter(l=>l.length>1);
+  const textoPlano=lineas.join(' ');
+  console.log('[OCR] texto plano:', textoPlano);
+
+  // ── CAUSA: número tras "CAUSA" en la etiqueta
+  // Ej: "CAUSA 42" o "CAUSA\n42"
+  let mCausa=textoPlano.match(/CAUSA[\s:]+(\d{2,6})/i);
+  if(!mCausa){
+    // Buscar número solo válido como causa en cada línea
+    for(const linea of lineas){
+      const solo=linea.match(/^(\d{2,6})$/);
+      if(solo){const c=parseInt(solo[1]);if(CAUSAS[c]){ocrDatos.causa=c;break;}}
+    }
+  }
+  if(mCausa){const c=parseInt(mCausa[1]);if(CAUSAS[c]) ocrDatos.causa=c;}
+  // Fallback: cualquier número de 2-4 dígitos que sea causa válida
+  if(!ocrDatos.causa){
+    const todos=textoPlano.match(/\b(\d{2,6})\b/g)||[];
+    for(const n of todos){const c=parseInt(n);if(CAUSAS[c]){ocrDatos.causa=c;break;}}
+  }
+
+  // ── CU: 14-15 dígitos (empieza con 574926...)
+  // Es el número más largo de la etiqueta
+  const mCU=textoPlano.match(/\b(\d{14,15})\b/);
+  if(mCU) ocrDatos.cu=mCU[1];
+
+  // ── SKU: exactamente 8 dígitos, NO parte del CU ni folio
+  // En la etiqueta: el número de 8 dígitos en la sección central (ej: 31060737)
+  // El folio empieza con 1 y tiene 8 dígitos (ej: 13193514)
+  // El SKU NO empieza con 1 típicamente — pero si no hay otra forma, lo tomamos igual
+  const todos8=textoPlano.match(/\b(\d{8})\b/g)||[];
+  for(const n of todos8){
+    // Evitar que sea parte del CU ya capturado
+    if(ocrDatos.cu&&ocrDatos.cu.includes(n)) continue;
+    ocrDatos.sku=n;
+    break;
+  }
+
+  // ── Folio de servicio (Fcl. Servicio): 8 dígitos tras el label
+  const mFol=textoPlano.match(/Fcl[.\s]*Servicio[.:\s]*(\d{7,9})/i);
+  if(mFol) ocrDatos.folio=mFol[1];
+
+  // ── FUMCD: 3-4 dígitos tras "FUMCD"
+  const mFumcd=textoPlano.match(/FUMCD[\s:]*(\d{3,4})/i);
+  if(mFumcd) ocrDatos.fumcd=mFumcd[1];
+
+  // ── Código Remate: 7 dígitos tras "Remate"
+  const mRemate=textoPlano.match(/(?:Codigo\s+)?Remate[\s:]*(\d{6,7})/i);
+  if(mRemate) ocrDatos.remate=mRemate[1];
+
+  // ── Marca/Modelo: buscar marca conocida + palabras que siguen
+  // Ej: "Motorola E14 Lavanda", "Samsung a16", "Xiaomi redmi 15c"
+  const marcas=['Motorola','Samsung','Xiaomi','OPPO','Honor','Huawei','Realme','LG',
+    'Nokia','Alcatel','Apple','iPhone','Sony','TCL','Hisense','Panasonic','Koblenz',
+    'Mabe','Whirlpool','Acros','Daewoo','AT&T','Telcel','Ghia','HKpro','Hkpro'];
+  for(const m of marcas){
+    // Case-insensitive, captura marca + hasta 4 palabras más
+    const re=new RegExp(m+'(?:[\\s][\\w&]+){0,4}','i');
+    const match=textoPlano.match(re);
+    if(match){
+      ocrDatos.marca=match[0].trim().replace(/\s+/g,' ').slice(0,45);
+      break;
+    }
+  }
+
+  // ── Sucursal
+  const mSuc=textoPlano.match(/SUCURSAL[\s:]*(\d{2,4})/i);
+  if(mSuc) ocrDatos.sucursal=mSuc[1];
+
+  mostrarResultadoOCR(textoPlano);
+}
+
+function mostrarResultadoOCR(textoPlano){
+  const fields=document.getElementById('ocr-fields');
+  const items=[];
+
+  if(ocrDatos.causa) items.push(`<div style="display:flex;justify-content:space-between;font-size:.78rem;padding:4px 8px;background:var(--s2);border-radius:5px"><span style="color:var(--sub)">Causa</span><span style="font-weight:700;color:var(--g)">${ocrDatos.causa} — ${CAUSAS[ocrDatos.causa]?.d||''}</span></div>`);
+  if(ocrDatos.marca) items.push(`<div style="display:flex;justify-content:space-between;font-size:.78rem;padding:4px 8px;background:var(--s2);border-radius:5px"><span style="color:var(--sub)">Marca/Modelo</span><span style="font-weight:700;color:var(--text)">${ocrDatos.marca}</span></div>`);
+  if(ocrDatos.cu) items.push(`<div style="display:flex;justify-content:space-between;font-size:.78rem;padding:4px 8px;background:var(--s2);border-radius:5px"><span style="color:var(--sub)">CU (14 díg.)</span><span style="font-weight:700;color:var(--blue);font-family:'JetBrains Mono',monospace;font-size:.7rem">${ocrDatos.cu}</span></div>`);
+  if(ocrDatos.sku) items.push(`<div style="display:flex;justify-content:space-between;font-size:.78rem;padding:4px 8px;background:var(--s2);border-radius:5px"><span style="color:var(--sub)">SKU (8 díg.)</span><span style="font-weight:700;color:var(--y);font-family:'JetBrains Mono',monospace">${ocrDatos.sku}</span></div>`);
+  if(ocrDatos.folio) items.push(`<div style="display:flex;justify-content:space-between;font-size:.78rem;padding:4px 8px;background:var(--s2);border-radius:5px"><span style="color:var(--sub)">Fcl. Servicio</span><span style="font-weight:700;color:var(--text)">${ocrDatos.folio}</span></div>`);
+  if(ocrDatos.fumcd) items.push(`<div style="display:flex;justify-content:space-between;font-size:.78rem;padding:4px 8px;background:var(--s2);border-radius:5px"><span style="color:var(--sub)">FUMCD</span><span style="font-weight:700;color:var(--text)">${ocrDatos.fumcd}</span></div>`);
+  if(ocrDatos.remate) items.push(`<div style="display:flex;justify-content:space-between;font-size:.78rem;padding:4px 8px;background:var(--s2);border-radius:5px"><span style="color:var(--sub)">Cód. Remate</span><span style="font-weight:700;color:var(--text)">${ocrDatos.remate}</span></div>`);
+  if(ocrDatos.sucursal) items.push(`<div style="display:flex;justify-content:space-between;font-size:.78rem;padding:4px 8px;background:var(--s2);border-radius:5px"><span style="color:var(--sub)">Sucursal</span><span style="font-weight:700;color:var(--sub)">${ocrDatos.sucursal}</span></div>`);
+
+  if(items.length===0){
+    items.push('<div style="font-size:.78rem;color:var(--o);padding:8px">⚠️ No se encontraron datos claros — intenta con mejor iluminación o más cerca</div>');
+  }
+
+  fields.innerHTML=items.join('');
+
+  // Mostrar texto crudo (toggle)
+  document.getElementById('ocr-raw-txt').textContent=textoPlano;
+
+  document.getElementById('ocr-result-box').style.display='block';
+  document.getElementById('ocr-status').textContent=items.length>1?`✓ ${items.length} datos encontrados`:'Pocos datos — reintenta';
+}
+
+function aplicarOCR(){
+  if(ocrDatos.causa){
+    document.getElementById('ic').value=ocrDatos.causa;
+    onCausa();
+  }
+  if(ocrDatos.marca&&!document.getElementById('im').value.trim()){
+    document.getElementById('im').value=ocrDatos.marca;
+    onMarca();
+  }
+  // SKU (8 díg) va al campo SKU del formulario
+  if(ocrDatos.sku){
+    document.getElementById('isku').value=ocrDatos.sku;
+    onSku();
+  }
+  // CU (14 díg) se guarda internamente en G.cu para el historial y PDF
+  if(ocrDatos.cu){
+    G.cu=ocrDatos.cu;
+  }
+  cerrarOCR();
+  setTimeout(()=>{
+    if(!G.causa) document.getElementById('ic').focus();
+    else if(!G.marca) document.getElementById('im').focus();
+  },200);
+}
+
+function retryOCR(){
+  ocrDatos={};
+  document.getElementById('ocr-result-box').style.display='none';
+  document.getElementById('ocr-controls').style.display='flex';
+  document.getElementById('ocr-cam-view').style.display='flex';
+  document.getElementById('ocr-preview-view').style.display='none';
+  document.getElementById('ocr-status').textContent='Toma foto de la etiqueta completa';
+  iniciarOCRStream();
 }
 
 </script>
